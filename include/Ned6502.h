@@ -1,16 +1,14 @@
 #pragma once
+#include "../include/NedBus.h"
 #include <array>
-#include <cstdint>
-#include <functional>
 #include <string>
 
-namespace NedNes {
 class NedBus;
+namespace NedNes {
 class Ned6502 {
 
 private:
   // bus
-  NedBus *bus;
 
 public:
   // registers
@@ -20,6 +18,7 @@ public:
   uint8_t STKP = 0x00; // stack pointer
   uint16_t PC = 0x00;  // program counter
   uint8_t status = 0x00;
+  NedBus *bus;
 
   Ned6502(NedBus *_bus);
   enum NedCPUFlags {
@@ -33,17 +32,11 @@ public:
     N = (1 << 7), // Negative Flag
   };
 
-  bool getFlag(NedCPUFlags f) { return (status & f) > 0; }
-  void setFlag(NedCPUFlags f, bool v) {
-    if (v) {
-      status |= f;
-    } else
-      status &= ~f;
-  }
-
+  bool getFlag(NedCPUFlags f);
+  void setFlag(NedCPUFlags f, bool v);
   // variables to store data, address
-  uint16_t addr = 0x00;
-  uint8_t rel_addr = 0x00;
+  uint16_t absolute_addr = 0x00;
+  uint16_t rel_addr = 0x00;
   uint8_t fetched = 0x00;
   uint8_t opcode = 0x00; // currently executing opcode
 
@@ -96,16 +89,92 @@ public:
   uint8_t REL(); // Relative Addressing Mode: The second operand is an offset
                  // value from -128 to 127 that will be added to the PC, this is
                  // used by branching instruction
-};
 
-// an instruction represents
-// mnemonic: the mnemonic for the instruction
-// addr_mode: the addressing mode for the functions
-struct INSTRUCTION {
-  std::string mnemonic;
-  std::function<uint8_t()> addr_mode = nullptr;
-  std::function<uint8_t()> operate = nullptr;
-  unsigned int cycles = 0;
+  // an instruction represents
+  // mnemonic: the mnemonic for the instruction
+  // addr_mode: the addressing mode for the functions
+
+  // 6502 Operations//////////////////////////////////////////////////////////
+
+  uint8_t BRK();
+  uint8_t ORA();
+  uint8_t ASL();
+  uint8_t PHP();
+  uint8_t BPL();
+  uint8_t CLC();
+  uint8_t JSR();
+  uint8_t AND();
+  uint8_t BIT();
+  uint8_t BNE();
+  uint8_t ROL();
+  uint8_t PLP();
+  uint8_t BMI();
+  uint8_t SEC();
+  uint8_t RTI();
+  uint8_t EOR();
+  uint8_t LSR();
+  uint8_t PHA();
+  uint8_t JMP();
+  uint8_t BVC();
+  uint8_t CLI();
+  uint8_t RTS();
+  uint8_t ADC();
+  uint8_t ROR();
+  uint8_t SEI();
+  uint8_t BVS();
+  uint8_t STA();
+  uint8_t STY();
+  uint8_t STX();
+  uint8_t TYA();
+  uint8_t TXS();
+  uint8_t BCC();
+  uint8_t LDA();
+  uint8_t LDX();
+  uint8_t LDY();
+  uint8_t TAY();
+  uint8_t TAX();
+  uint8_t BCS();
+  uint8_t CLV();
+  uint8_t TSX();
+  uint8_t CPY();
+  uint8_t CMP();
+  uint8_t DEC();
+  uint8_t CLD();
+  uint8_t CPX();
+  uint8_t SBC();
+  uint8_t INC();
+  uint8_t INX();
+  uint8_t NOP();
+  uint8_t BEQ();
+  uint8_t SED();
+  uint8_t INY();
+  uint8_t DEX();
+  uint8_t DEY();
+  uint8_t TXA();
+  uint8_t PLA();
+
+  //////////////////////////////////////////////////////////////////////////////////
+  struct INSTRUCTION {
+    std::string name;
+    uint8_t (Ned6502::*addr_mode)() = nullptr;
+    uint8_t (Ned6502::*operate)() = nullptr;
+    unsigned int cycles = 0;
+  };
+
+  using addr_mode_type = uint8_t (Ned6502::*)();
+  addr_mode_type IMPLIED = &Ned6502::IMP;
+  addr_mode_type ACCUMULATOR = &Ned6502::ACC;
+  addr_mode_type IMMEDIATE = &Ned6502::IMM;
+  addr_mode_type ZERO_PAGE = &Ned6502::ZP;
+  addr_mode_type ZERO_PAGE_X = &Ned6502::ZPX;
+  addr_mode_type ZERO_PAGE_Y = &Ned6502::ZPY;
+  addr_mode_type RELATIVE = &Ned6502::REL;
+  addr_mode_type ABSOLUTE = &Ned6502::ABS;
+  addr_mode_type ABSOLUTE_X = &Ned6502::ABX;
+  addr_mode_type ABSOLUTE_Y = &Ned6502::ABY;
+  addr_mode_type INDIRECT = &Ned6502::IND;
+  addr_mode_type INDIRECT_X = &Ned6502::IZX;
+  addr_mode_type INDIRECT_Y = &Ned6502::IZY;
 };
 
 } // namespace NedNes
