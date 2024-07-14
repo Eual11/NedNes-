@@ -1,10 +1,11 @@
 #pragma once
-#include "Ned6502.h"
 #include <array>
 #include <stdint.h>
 #include <vector>
+
 namespace NedNes {
 
+class Ned6502;
 class NedBus {
 
   // conencted devices
