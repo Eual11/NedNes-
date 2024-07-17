@@ -1,5 +1,4 @@
 #include "../include/Ned6502.h"
-#include <stdint.h>
 using namespace NedNes;
 bool Ned6502::getFlag(Ned6502::NedCPUFlags f) { return (status & f) > 0; }
 void NedNes::Ned6502::setFlag(Ned6502::NedCPUFlags f, bool v) {
@@ -120,4 +119,11 @@ uint8_t Ned6502::REL() {
     rel_addr |= 0xFF00;
   }
   return 0x0;
+}
+
+// INSTRUCTIONS
+
+uint8_t Ned6502::XXX() {
+  std::cout << "Not Implemented\n";
+  return 0x00;
 }
