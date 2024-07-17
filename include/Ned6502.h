@@ -1,6 +1,7 @@
 #pragma once
 #include "../include/NedBus.h"
 #include <array>
+#include <iostream>
 #include <string>
 
 class NedBus;
@@ -152,6 +153,7 @@ public:
   uint8_t DEY();
   uint8_t TXA();
   uint8_t PLA();
+  uint8_t XXX();
 
   //////////////////////////////////////////////////////////////////////////////////
   struct INSTRUCTION {
@@ -175,6 +177,48 @@ public:
   addr_mode_type INDIRECT = &Ned6502::IND;
   addr_mode_type INDIRECT_X = &Ned6502::IZX;
   addr_mode_type INDIRECT_Y = &Ned6502::IZY;
+
+  INSTRUCTION opcodes[256] = {
+
+      // 0x00
+      {"BRK", IMPLIED, &Ned6502::BRK, 7},     // 0x00
+      {"ORA", INDIRECT_X, &Ned6502::ORA, 6},  // 0x01
+      {"XXX", IMPLIED, &Ned6502::XXX},        // 0x02
+      {"XXX", IMPLIED, &Ned6502::XXX},        // 0x03
+      {"XXX", IMPLIED, &Ned6502::XXX},        // 0x04
+      {"ORA", ZERO_PAGE, &Ned6502::ORA, 3},   // 0x05
+      {"ASL", ZERO_PAGE, &Ned6502::ASL, 5},   // 0X06
+      {"XXX", IMPLIED, &Ned6502::XXX},        // 0x07
+      {"PHP", IMPLIED, &Ned6502::PHP, 3},     // 0x08
+      {"ORA", IMMEDIATE, &Ned6502::ORA, 2},   // 0x09
+      {"ASL", ACCUMULATOR, &Ned6502::ASL, 2}, // 0x0A
+      {"XXX", IMPLIED, &Ned6502::XXX},        // 0x0B
+      {"XXX", IMPLIED, &Ned6502::XXX},        // 0x0C
+      {"ORA", ABSOLUTE, &Ned6502::ORA, 4},    // 0X0D
+      {"ASL", ABSOLUTE, &Ned6502::ASL, 6},    // 0X0E
+      {"XXX", IMPLIED, &Ned6502::XXX},        // 0x0F
+
+      // 0x10
+      {"BPL", RELATIVE, &Ned6502::BPL, 2},    // 0x10
+      {"ORA", INDIRECT_Y, &Ned6502::ORA, 5},  // 0x11
+      {"XXX", IMPLIED, &Ned6502::XXX},        // 0x12
+      {"XXX", IMPLIED, &Ned6502::XXX},        // 0x13
+      {"XXX", IMPLIED, &Ned6502::XXX},        // 0x14
+      {"ORA", ZERO_PAGE_X, &Ned6502::ORA, 4}, // 0X15
+      {"ASL", ZERO_PAGE_X, &Ned6502::ASL, 6}, // 0X16
+      {"XXX", IMPLIED, &Ned6502::XXX},        // 0x17
+      {"CLC", IMPLIED, &Ned6502::CLC, 2},     // 0X18
+      {"ORA", ABSOLUTE_Y, &Ned6502::ORA, 4},  // 0x19
+      {"XXX", IMPLIED, &Ned6502::XXX},        // 0x1A
+      {"XXX", IMPLIED, &Ned6502::XXX},        // 0x1B
+      {"XXX", IMPLIED, &Ned6502::XXX},        // 0x1C
+      {"ORA", ABSOLUTE_X, &Ned6502::ORA, 4},  // OX1D
+      {"ASL", ABSOLUTE_X, &Ned6502::ASL, 7},  // 0x1E
+      {"XXX", IMPLIED, &Ned6502::XXX},        // 0x1F
+
+      // 0x20
+
+  };
 };
 
 } // namespace NedNes
