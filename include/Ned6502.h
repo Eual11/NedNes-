@@ -217,6 +217,167 @@ public:
       {"XXX", IMPLIED, &Ned6502::XXX},        // 0x1F
 
       // 0x20
+      {"JSR", ABSOLUTE, &Ned6502::JSR, 6},    // 0X20
+      {"AND", INDIRECT_X, &Ned6502::AND, 6},  // 0X21
+      {"XXX", IMPLIED, &Ned6502::XXX},        // 0x22
+      {"XXX", IMPLIED, &Ned6502::XXX},        // 0x23
+      {"BIT", ZERO_PAGE, &Ned6502::BIT, 3},   // 0x24
+      {"AND", ZERO_PAGE, &Ned6502::AND, 3},   // 0x25
+      {"ROL", ZERO_PAGE, &Ned6502::ROL, 5},   // 0X26
+      {"XXX", IMPLIED, &Ned6502::XXX},        // 0x27
+      {"PLP", IMPLIED, &Ned6502::PLP, 4},     // 0x28
+      {"AND", IMMEDIATE, &Ned6502::AND, 2},   // 0x29
+      {"ROL", ACCUMULATOR, &Ned6502::ROL, 2}, // 0x2A
+      {"XXX", IMPLIED, &Ned6502::XXX},        // 0x2B
+      {"BIT", ABSOLUTE, &Ned6502::BIT, 4},    // 0x2C
+      {"AND", ABSOLUTE, &Ned6502::AND, 4},    // 0x2D
+      {"ROL", ABSOLUTE, &Ned6502::ROL, 6},    // 0x2E
+      {"XXX", IMPLIED, &Ned6502::XXX},        // 0x2F
+
+      // 0x30
+      {"BMI", RELATIVE, &Ned6502::BMI, 2},    // 0x30
+      {"AND", INDIRECT_Y, &Ned6502::AND, 5},  // 0x31
+      {"XXX", IMPLIED, &Ned6502::XXX},        // 0x32
+      {"XXX", IMPLIED, &Ned6502::XXX},        // 0x33
+      {"XXX", IMPLIED, &Ned6502::XXX},        // 0x34
+      {"AND", ZERO_PAGE_X, &Ned6502::AND, 4}, // 0x35
+      {"ROL", ZERO_PAGE_X, &Ned6502::ROL, 6}, // 0x36
+      {"XXX", IMPLIED, &Ned6502::XXX},        // 0x37
+      {"SEC", IMPLIED, &Ned6502::SEC, 2},     // 0x38
+      {"AND", ABSOLUTE_Y, &Ned6502::AND, 4},  // 0x39
+      {"XXX", IMPLIED, &Ned6502::XXX},        // 0x3A
+      {"XXX", IMPLIED, &Ned6502::XXX},        // 0x3B
+      {"XXX", IMPLIED, &Ned6502::XXX},        // 0x3C
+      {"AND", ABSOLUTE_X, &Ned6502::AND, 4},  // 0x3D
+      {"ROL", ABSOLUTE_X, &Ned6502::ROL, 7},  // 0x3E
+      {"XXX", IMPLIED, &Ned6502::XXX},        // 0x3F
+
+      // 0x40
+      {"RTI", IMPLIED, &Ned6502::RTI, 6},     // 0x40
+      {"EOR", INDIRECT_X, &Ned6502::EOR, 6},  // 0x41
+      {"XXX", IMPLIED, &Ned6502::XXX},        // 0x42
+      {"XXX", IMPLIED, &Ned6502::XXX},        // 0x43
+      {"XXX", IMPLIED, &Ned6502::XXX},        // 0x44
+      {"EOR", ZERO_PAGE, &Ned6502::EOR, 3},   // 0x45
+      {"LSR", ZERO_PAGE, &Ned6502::LSR, 5},   // 0x46
+      {"XXX", IMPLIED, &Ned6502::XXX},        // 0x47
+      {"PHA", IMPLIED, &Ned6502::PHA, 3},     // 0x48
+      {"EOR", IMMEDIATE, &Ned6502::EOR, 2},   // 0x49
+      {"LSR", ACCUMULATOR, &Ned6502::LSR, 2}, // 0x4A
+      {"XXX", IMPLIED, &Ned6502::XXX},        // 0x4B
+      {"JMP", ABSOLUTE, &Ned6502::JMP, 3},    // 0x4C
+      {"EOR", ABSOLUTE, &Ned6502::EOR, 4},    // 0x4D
+      {"LSR", ABSOLUTE, &Ned6502::LSR, 6},    // 0x4E
+      {"XXX", IMPLIED, &Ned6502::XXX},        // 0x4F
+
+      // 0X50
+      {"BVC", RELATIVE, &Ned6502::BVC, 2},    //-0x50
+      {"EOR", INDIRECT_Y, &Ned6502::EOR, 5},  // 0x51
+      {"XXX", IMPLIED, &Ned6502::XXX},        // 0x52
+      {"XXX", IMPLIED, &Ned6502::XXX},        // 0x53
+      {"XXX", IMPLIED, &Ned6502::XXX},        // 0x54
+      {"EOR", ZERO_PAGE_X, &Ned6502::EOR, 4}, // 0x55
+      {"LSR", ZERO_PAGE_X, &Ned6502::LSR, 6}, // 0x56
+      {"XXX", IMPLIED, &Ned6502::XXX},        // 0x57
+      {"CLI", IMPLIED, &Ned6502::CLI, 2},     // 0x58
+      {"EOR", ABSOLUTE_Y, &Ned6502::EOR, 4},  // 0x59
+      {"XXX", IMPLIED, &Ned6502::XXX},        // 0x5A
+      {"XXX", IMPLIED, &Ned6502::XXX},        // 0x5B
+      {"XXX", IMPLIED, &Ned6502::XXX},        // 0x5C
+      {"EOR", ABSOLUTE_X, &Ned6502::EOR, 4},  // 0x5D
+      {"LSR", ABSOLUTE_X, &Ned6502::LSR, 7},  // 0x5E
+      {"XXX", IMPLIED, &Ned6502::XXX},        // 0x5F
+
+      // 0x60
+      {"RTS", IMPLIED, &Ned6502::RTS, 6},     // 0x60
+      {"ADC", INDIRECT_X, &Ned6502::ADC, 6},  // 0x61
+      {"XXX", IMPLIED, &Ned6502::XXX},        // 0x62
+      {"XXX", IMPLIED, &Ned6502::XXX},        // 0x63
+      {"XXX", IMPLIED, &Ned6502::XXX},        // 0x64
+      {"ADC", ZERO_PAGE, &Ned6502::ADC, 3},   // 0x65
+      {"ROR", ZERO_PAGE, &Ned6502::ROR, 5},   // 0x66
+      {"XXX", IMPLIED, &Ned6502::XXX},        // 0x67
+      {"PLA", IMPLIED, &Ned6502::PLA, 4},     // 0x68
+      {"ADC", IMMEDIATE, &Ned6502::ADC, 2},   // 0x69
+      {"ROR", ACCUMULATOR, &Ned6502::ROR, 2}, // 0x6A
+      {"XXX", IMPLIED, &Ned6502::XXX},        // 0x6B
+      {"JMP", INDIRECT, &Ned6502::JMP, 5},    // 0x6C
+      {"ADC", ABSOLUTE, &Ned6502::ADC, 4},    //-0x6D
+      {"ROR", ABSOLUTE, &Ned6502::ROR, 6},    // 0x6E
+      {"XXX", IMPLIED, &Ned6502::XXX},        // 0x6F
+
+      //-0x70
+      {"BVS", RELATIVE, &Ned6502::BVS, 2},    // 0x70
+      {"ADC", INDIRECT_Y, &Ned6502::ADC, 5},  // 0x71
+      {"XXX", IMPLIED, &Ned6502::XXX},        // 0x72
+      {"XXX", IMPLIED, &Ned6502::XXX},        // 0x73
+      {"XXX", IMPLIED, &Ned6502::XXX},        // 0x74
+      {"ADC", ZERO_PAGE_X, &Ned6502::ADC, 4}, // 0x75
+      {"ROR", ZERO_PAGE_X, &Ned6502::ROR, 6}, // 0x76
+      {"XXX", IMPLIED, &Ned6502::XXX},        // 0x77
+      {"SEI", IMPLIED, &Ned6502::SEI, 2},     // 0x78
+      {"ADC", ABSOLUTE_Y, &Ned6502::ADC, 4},  // 0x79
+      {"XXX", IMPLIED, &Ned6502::XXX},        // 0x7A
+      {"XXX", IMPLIED, &Ned6502::XXX},        // 0x7B
+      {"XXX", IMPLIED, &Ned6502::XXX},        // 0x7C
+      {"ADC", ABSOLUTE_X, &Ned6502::ADC, 4},  // 0x7D
+      {"ROR", ABSOLUTE_X, &Ned6502::ROR, 7},  // 0x7E
+      {"XXX", IMPLIED, &Ned6502::XXX},        // 0x7F
+
+      // 0x80
+
+      {"XXX", IMPLIED, &Ned6502::XXX},       // 0x80
+      {"STA", INDIRECT_X, &Ned6502::STA, 6}, // 0x81
+      {"XXX", IMPLIED, &Ned6502::XXX},       // 0x82
+      {"XXX", IMPLIED, &Ned6502::XXX},       // 0x83
+      {"STY", ZERO_PAGE, &Ned6502::STY, 3},  // 0x84
+      {"STA", ZERO_PAGE, &Ned6502::STA, 3},  // 0x85
+      {"STX", ZERO_PAGE, &Ned6502::STX, 3},  // 0x86
+      {"XXX", IMPLIED, &Ned6502::XXX},       // 0x87
+      {"DEY", IMPLIED, &Ned6502::DEY, 2},    // 0x88
+      {"XXX", IMPLIED, &Ned6502::XXX},       // 0x89
+      {"TXA", IMPLIED, &Ned6502::TXA, 2},    // 0x8A
+      {"XXX", IMPLIED, &Ned6502::XXX},       // 0x8B
+      {"STY", ABSOLUTE, &Ned6502::STY, 4},   // 0x8C
+      {"STA", ABSOLUTE, &Ned6502::STA, 4},   // 0x8D
+      {"STX", ABSOLUTE, &Ned6502::STX, 4},   // 0x8E
+      {"XXX", IMPLIED, &Ned6502::XXX},       // 0x8F
+
+      //-0x90
+      {"BCC", RELATIVE, &Ned6502::BCC, 2},    // 0x90
+      {"STA", INDIRECT_Y, &Ned6502::STA, 6},  // 0x91
+      {"XXX", IMPLIED, &Ned6502::XXX},        // 0x92
+      {"XXX", IMPLIED, &Ned6502::XXX},        // 0x93
+      {"STY", ZERO_PAGE_X, &Ned6502::STY, 4}, // 0x94
+      {"STA", ZERO_PAGE_X, &Ned6502::STA, 4}, // 0x95
+      {"STX", ZERO_PAGE_Y, &Ned6502::STX, 4}, // 0x96
+      {"XXX", IMPLIED, &Ned6502::XXX},        // 0x97
+      {"TYA", IMPLIED, &Ned6502::TYA, 2},     // 0x98
+      {"STA", ABSOLUTE_Y, &Ned6502::STA, 5},  // 0x99
+      {"TXS", IMPLIED, &Ned6502::TXS, 2},     // 0x9A
+      {"XXX", IMPLIED, &Ned6502::XXX},        // 0x9B
+      {"XXX", IMPLIED, &Ned6502::XXX},        // 0x9C
+      {"STA", ABSOLUTE_X, &Ned6502::STA, 5},  //-0x9D
+      {"XXX", IMPLIED, &Ned6502::XXX},        // 0x9E
+      {"XXX", IMPLIED, &Ned6502::XXX},        // 0x9F
+
+      // 0XA0
+      {"LDY", IMMEDIATE, &Ned6502::LDY, 2},  // 0xA0
+      {"LDA", INDIRECT_X, &Ned6502::LDA, 6}, // 0XA1
+      {"LDX", IMMEDIATE, &Ned6502::LDX, 2},  // 0xA2
+      {"XXX", IMPLIED, &Ned6502::XXX},       // 0xA3
+      {"LDY", ZERO_PAGE, &Ned6502::LDY, 3},  // 0xA4
+      {"LDA", ZERO_PAGE, &Ned6502::LDA, 3},  // 0xA5
+      {"LDX", ZERO_PAGE, &Ned6502::LDX, 3},  // 0xA6
+      {"XXX", IMPLIED, &Ned6502::XXX},       // 0xA7
+      {"TAY", IMPLIED, &Ned6502::TAY, 2},    // 0xA8
+      {"LDA", IMMEDIATE, &Ned6502::LDA, 2},  // 0XA9
+      {"TAX", IMPLIED, &Ned6502::TAX, 2},    // 0xAA
+      {"XXX", IMPLIED, &Ned6502::XXX},       // 0xAB
+      {"LDY", ABSOLUTE, &Ned6502::LDY, 4},   // 0xAC
+      {"LDA", ABSOLUTE, &Ned6502::LDA, 4},   // 0xAD
+      {"LDX", ABSOLUTE, &Ned6502::LDX, 4},   // 0xAE
+      {"XXX", IMPLIED, &Ned6502::XXX},       // 0xAF
 
   };
 };
