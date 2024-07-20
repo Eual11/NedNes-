@@ -379,6 +379,46 @@ public:
       {"LDX", ABSOLUTE, &Ned6502::LDX, 4},   // 0xAE
       {"XXX", IMPLIED, &Ned6502::XXX},       // 0xAF
 
+      // 0xB0
+      {"BCS", RELATIVE, &Ned6502::BCS, 2},    // 0xB0
+      {"LDA", INDIRECT_Y, &Ned6502::LDA, 5},  // 0xB1
+      {"XXX", IMPLIED, &Ned6502::XXX},        // 0xB2
+      {"XXX", IMPLIED, &Ned6502::XXX},        // 0xB3
+      {"LDY", ZERO_PAGE_X, &Ned6502::LDY, 4}, // 0xB4
+      {"LDA", ZERO_PAGE_X, &Ned6502::LDA, 4}, // 0xB5
+      {"LDX", ZERO_PAGE_Y, &Ned6502::LDX, 4}, // 0xB6
+      {"XXX", IMPLIED, &Ned6502::XXX},        // 0xB7
+      {"CLV", IMPLIED, &Ned6502::CLV, 2},     // 0xB8
+      {"LDA", ABSOLUTE_Y, &Ned6502::LDA, 4},  //-0xB9
+      {"TSX", IMPLIED, &Ned6502::TSX, 2},     // 0xBA
+      {"XXX", IMPLIED, &Ned6502::XXX},        // 0xBB
+      {"LDY", ABSOLUTE_X, &Ned6502::LDY, 4},  // 0xBC
+      {"LDA", ABSOLUTE_X, &Ned6502::LDA, 4},  // 0xBD
+      {"LDX", ABSOLUTE_Y, &Ned6502::LDX, 4},  // 0xBE
+      {"XXX", IMPLIED, &Ned6502::XXX},        // 0xBF
+
+      // 0xC0
+
+      {"CPY", IMMEDIATE, &Ned6502::CPY, 2},  // 0xC0
+      {"CMP", INDIRECT_X, &Ned6502::CMP, 6}, // 0xC1
+      {"XXX", IMPLIED, &Ned6502::XXX},       // 0xC2
+      {"XXX", IMPLIED, &Ned6502::XXX},       // 0xC3
+      {"CPY", ZERO_PAGE, &Ned6502::CPY, 3},  // 0xC4
+      {"CMP", ZERO_PAGE, &Ned6502::CMP, 3},  // 0xC5
+      {"DEC", ZERO_PAGE, &Ned6502::DEC, 5},  // 0xC6
+      {"XXX", IMPLIED, &Ned6502::XXX},       // 0xC7
+      {"INY", IMPLIED, &Ned6502::INY, 2},    // 0xC8
+      {"CMP", IMMEDIATE, &Ned6502::CMP, 2},  // 0xC9
+      {"DEX", IMPLIED, &Ned6502::DEX, 2},    // 0xCA
+      {"XXX", IMPLIED, &Ned6502::XXX},       // 0xCB
+      {"CPY", ABSOLUTE, &Ned6502::CPY, 4},   // 0xCC
+      {"CMP", ABSOLUTE, &Ned6502::CMP, 4},   // 0xCD
+      {"DEC", ABSOLUTE, &Ned6502::DEC, 6},   // 0xCE
+      {"XXX", IMPLIED, &Ned6502::XXX},       // 0xCF
+
+      // 0xD0
+      //
+
   };
 };
 
