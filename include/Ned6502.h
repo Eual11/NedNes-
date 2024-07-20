@@ -417,7 +417,61 @@ public:
       {"XXX", IMPLIED, &Ned6502::XXX},       // 0xCF
 
       // 0xD0
-      //
+
+      {"BNE", RELATIVE, &Ned6502::BNE, 2},    // 0xD0
+      {"CMP", INDIRECT_Y, &Ned6502::CMP, 5},  // 0xD1
+      {"XXX", IMPLIED, &Ned6502::XXX},        // 0xD2
+      {"XXX", IMPLIED, &Ned6502::XXX},        // 0xD3
+      {"XXX", IMPLIED, &Ned6502::XXX},        // 0xD4
+      {"CMP", ZERO_PAGE_X, &Ned6502::CMP, 4}, //-0xD5
+      {"DEC", ZERO_PAGE_X, &Ned6502::DEC, 6}, // 0xD6
+      {"XXX", IMPLIED, &Ned6502::XXX},        // 0xD7
+      {"CLD", IMPLIED, &Ned6502::CLD, 2},     //-0xD8
+      {"CMP", ABSOLUTE_Y, &Ned6502::CMP, 4},  // 0xD9
+      {"XXX", IMPLIED, &Ned6502::XXX},        // 0xDA
+      {"XXX", IMPLIED, &Ned6502::XXX},        // 0xDB
+      {"XXX", IMPLIED, &Ned6502::XXX},        // 0xDC
+      {"CMP", ABSOLUTE_X, &Ned6502::CMP, 4},  // 0xDD
+      {"DEC", ABSOLUTE_X, &Ned6502::DEC, 7},  // 0xDE
+      {"XXX", IMPLIED, &Ned6502::XXX},        // 0xDF
+
+      //-0xE0
+
+      {"CPX", IMMEDIATE, &Ned6502::CPX, 2},  //-0XE0
+      {"SBC", INDIRECT_X, &Ned6502::SBC, 6}, // 0xE1
+      {"XXX", IMPLIED, &Ned6502::XXX},       // 0xE2
+      {"XXX", IMPLIED, &Ned6502::XXX},       // 0xE3
+      {"CPX", ZERO_PAGE, &Ned6502::CPX, 3},  //-0xE4
+      {"SBC", ZERO_PAGE, &Ned6502::SBC, 3},  // 0xE5
+      {"INC", ZERO_PAGE, &Ned6502::INC, 5},  // 0xE6
+      {"XXX", IMPLIED, &Ned6502::XXX},       // 0xE7
+      {"INX", IMPLIED, &Ned6502::INX, 2},    //-0xE8
+      {"SBC", IMMEDIATE, &Ned6502::SBC, 2},  // 0xE9
+      {"NOP", IMPLIED, &Ned6502::NOP, 2},    // 0xEA
+      {"XXX", IMPLIED, &Ned6502::XXX},       // 0xEB
+      {"CPX", ABSOLUTE, &Ned6502::CPX, 4},   // 0xEC
+      {"SBC", ABSOLUTE, &Ned6502::SBC, 4},   // 0xED
+      {"INC", ABSOLUTE, &Ned6502::INC, 6},   // 0xEE
+      {"XXX", IMPLIED, &Ned6502::XXX},       // 0xEF
+
+      // 0xF0
+
+      {"BEQ", RELATIVE, &Ned6502::BEQ, 2},    // 0xF0
+      {"SBC", INDIRECT_Y, &Ned6502::SBC, 5},  // 0xF1
+      {"XXX", IMPLIED, &Ned6502::XXX},        // 0xF2
+      {"XXX", IMPLIED, &Ned6502::XXX},        // 0xF3
+      {"XXX", IMPLIED, &Ned6502::XXX},        // 0xF4
+      {"SBC", ZERO_PAGE_X, &Ned6502::SBC, 4}, // 0xF5
+      {"INC", ZERO_PAGE_X, &Ned6502::INC, 6}, // 0xF6
+      {"XXX", IMPLIED, &Ned6502::XXX},        // 0xF7
+      {"SED", IMPLIED, &Ned6502::SED, 2},     // 0xF8
+      {"SBC", ABSOLUTE_Y, &Ned6502::SBC, 4},  // 0xF9
+      {"XXX", IMPLIED, &Ned6502::XXX},        // 0xFA
+      {"XXX", IMPLIED, &Ned6502::XXX},        // 0xFB
+      {"XXX", IMPLIED, &Ned6502::XXX},        // 0xFC
+      {"SBC", ABSOLUTE_X, &Ned6502::SBC, 4},  // 0xFD
+      {"INC", ABSOLUTE_X, &Ned6502::INC, 7},  // 0xFE
+      {"XXX", IMPLIED, &Ned6502::XXX},        // 0xFF
 
   };
 };
