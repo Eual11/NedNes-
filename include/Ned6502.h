@@ -2,8 +2,11 @@
 #include "../include/NedBus.h"
 #include <array>
 #include <iostream>
+#include <stdint.h>
 #include <string>
 
+#define abs(V) ((V > 0) ? V : -V)
+#define nthBit(D, b) (D >> b)
 class NedBus;
 namespace NedNes {
 class Ned6502 {
@@ -23,8 +26,11 @@ public:
 
   Ned6502(NedBus *_bus);
   enum NedCPUFlags {
-    C = (1 << 0), // CARRY FLAG
-    Z = (1 << 1), // Zero Flag
+    // CARRY FLAG
+
+    C = (1 << 0),
+    // Zero Flag
+    Z = (1 << 1),
     I = (1 << 2), // Interupt Disable Flag
     D = (1 << 3), // Decimal Mode (Unused because the Nes does not use it)
     B = (1 << 4), // BreakCommand Flag
@@ -37,7 +43,7 @@ public:
   void setFlag(NedCPUFlags f, bool v);
   // variables to store data, address
   uint16_t absolute_addr = 0x00;
-  uint16_t rel_addr = 0x00;
+  int16_t rel_addr = 0x00;
   uint8_t fetched = 0x00;
   uint8_t opcode = 0x00; // currently executing opcode
 
@@ -62,34 +68,19 @@ public:
 
   // Addressing Modes, The 6502 had +12 Addressing modes to data and operands
 
-  uint8_t IMP(); // Implied Addressing mode there is no operand
-  uint8_t ACC(); // Accumulator Addressing Mode: the accumulator is the operand
-  uint8_t IMM(); // Immediate Addressing Mode: the operand is supplied in the
-                 // instruction
-  uint8_t ZP(); // Zero Page Addressing Mode: the operand is a memory address in
-                // the Zero page memory ($0000-00FF)
-  uint8_t ZPX(); // Zero Page X Indexed, the effective address is calculated by
-                 // adding the zero page address to the X index register (It
-                 // wraps around zero page during overflow)
-  uint8_t
-  ZPY(); // Zero Page Y indexed, same us ZPX but uses the Y index register
-  uint8_t
-  ABS(); // Absolute Addressing Mode, the operand is the full 16 bit address
-  uint8_t ABX(); // X Indexed Absolute Addressing Mode: the effective address is
-                 // calculated by adding the Absolute address and the value in
-                 // the X register
-  uint8_t ABY(); // Y indexed Absolute Addressing Mode: Similar to ABX but used
-                 // the Y register instead
-  uint8_t IND(); // Indirect Addressing Mode, the operand is a pointer to where
-                 // the data is located
-  uint8_t
-  IZX(); // Indirect X index Addressing the the operand is found in the memory
-         // address we get by adding the zero page address and X register
-  uint8_t IZY(); // Indirect Y Indexed Addressing Mode, Similar to IZX but used
-                 // the y register
-  uint8_t REL(); // Relative Addressing Mode: The second operand is an offset
-                 // value from -128 to 127 that will be added to the PC, this is
-                 // used by branching instruction
+  uint8_t IMP();
+  uint8_t ACC();
+  uint8_t IMM();
+  uint8_t ZP();
+  uint8_t ZPX();
+  uint8_t ZPY();
+  uint8_t ABS();
+  uint8_t ABX();
+  uint8_t ABY();
+  uint8_t IND();
+  uint8_t IZX();
+  uint8_t IZY();
+  uint8_t REL();
 
   // an instruction represents
   // mnemonic: the mnemonic for the instruction
@@ -178,6 +169,9 @@ public:
   addr_mode_type INDIRECT_X = &Ned6502::IZX;
   addr_mode_type INDIRECT_Y = &Ned6502::IZY;
 
+  // Utility to get the addressing mode of the current instruction
+
+  addr_mode_type curAddressingMode();
   INSTRUCTION opcodes[256] = {
 
       // 0x00
