@@ -177,6 +177,51 @@ uint8_t Ned6502::REL() {
   return 0x00;
 }
 
+// Functionalities
+//
+
+void Ned6502::reset() {
+  // Setting SP
+
+  status = 0x00;
+  STKP = 0xFD;
+  setFlag(Ned6502::I, true);
+  setFlag(Ned6502::D, false);
+  setFlag(Ned6502::U, true);
+
+  // Reading from the rest vector
+  PC = (read(0xFFFD) << 8) | read(0xFFFC);
+  A = 0x00; // accumulator
+  X = 0x00; // X index register
+  Y = 0x00; // Y index register
+}
+
+// interrupt request
+void Ned6502::irq() {
+  uint16_t offset = 0x0100;
+  write(STKP-- + offset, (PC >> 8) & 0xFF); // pushing the hi byte
+  write(STKP-- + offset, (PC & 0xFF));      // pushing the lo byte
+  write(STKP-- + offset, status);           // pushing the status flag
+  setFlag(Ned6502::I, true);
+
+  // reading from the reset interrupt vector
+
+  PC = (read(0xFFFF) << 8) | (read(0xFFFE));
+}
+
+// Non Maskable Interrupt
+void Ned6502::nmi() {
+  uint16_t offset = 0x0100;
+  write(STKP-- + offset, (PC >> 8) & 0xFF); // pushing the hi byte
+  write(STKP-- + offset, PC & 0xFF);        // pushing the lo byte
+  write(STKP-- + offset, status);           // status flag
+
+  setFlag(Ned6502::I, true);
+
+  // jumpting to interrupt vector
+  PC = (read(0xFFFB) << 8) | (read(0xFFFA));
+}
+
 // INSTRUCTIONS
 
 uint8_t Ned6502::XXX() {
