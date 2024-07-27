@@ -2,7 +2,9 @@
 #include <stdint.h>
 
 using namespace NedNes;
-bool Ned6502::getFlag(Ned6502::NedCPUFlags f) { return (status & f) > 0; }
+bool Ned6502::getFlag(Ned6502::NedCPUFlags f) {
+  return ((status & f) > 0) ? 1 : 0;
+}
 void NedNes::Ned6502::setFlag(Ned6502::NedCPUFlags f, bool v) {
   if (v)
     status |= f;
@@ -13,6 +15,7 @@ void NedNes::Ned6502::setFlag(Ned6502::NedCPUFlags f, bool v) {
 Ned6502::Ned6502(NedBus *_bus) { bus = _bus; }
 uint8_t Ned6502::read(uint16_t addr) { return bus->read(addr); }
 void Ned6502::write(uint16_t addr, uint8_t val) { bus->write(addr, val); }
+void Ned6502::connectBus(NedBus *_bus) { bus = _bus; }
 uint8_t Ned6502::fetch(uint16_t addr) {
   if (opcodes[opcode].addr_mode != IMPLIED &&
       opcodes[opcode].addr_mode != ACCUMULATOR) {
@@ -23,13 +26,25 @@ uint8_t Ned6502::fetch(uint16_t addr) {
 
 void Ned6502::clock() {
 
+  /* printf("%x: %x\n", opcode, cycles); */
   if (cycles == 0) {
     // fetching opcode of the current instruction from the bus
     opcode = read(PC++);
 
+    if (opcode == 0x00)
+      complete = true;
+
     INSTRUCTION cur_opcode = opcodes[opcode];
 
     cycles = cur_opcode.cycles;
+#ifdef LOGMODE
+    fprintf(
+        logFile,
+        "%04X  %02X %02X %02X  %s $%04X                       A:%02X X:%02X "
+        "Y:%02X P:%02X SP:%02X PPU:%4d,%2d CYC:%lld\n",
+        PC - 1, opcode, 0x00, 0x00, cur_opcode.name.c_str(), PC - 1, A, X, Y,
+        status, STKP, 0x00, 0x00, total_cycles + 7);
+#endif
 
     // addressing mode
     uint8_t additional_clock1 = (this->*(cur_opcode.addr_mode))();
@@ -39,7 +54,9 @@ void Ned6502::clock() {
 
     cycles += additional_clock1;
     cycles += additional_clock2;
+    total_cycles += cycles;
   }
+  cycles--;
 }
 
 Ned6502::addr_mode_type Ned6502::curAddressingMode() {
@@ -96,12 +113,15 @@ uint8_t Ned6502::ABS() {
 // the X register
 
 uint8_t Ned6502::ABX() {
-  uint8_t lo = read(PC++);
-  uint8_t hi = read(PC++);
+  uint16_t lo = read(PC++); // Read low byte of address
+  uint16_t hi = read(PC++); // Read high byte of address
 
-  absolute_addr = ((hi << 8) | lo) + X;
-  absolute_addr &= 0xFFFF;
-  return ((absolute_addr >> 8) & 0xFF) == ((hi)&0xFF);
+  uint16_t base_addr = (hi << 8) | lo; // Combine to form the base address
+  absolute_addr = base_addr + X; // Add the X register for the final address
+  absolute_addr &= 0xFFFF;       // Ensure it stays within 16-bit address space
+
+  // Determine if a page boundary was crossed
+  return (base_addr & 0xFF00) != (absolute_addr & 0xFF00);
 }
 
 // Y indexed Absolute Addressing Mode: Similar to ABX but used
@@ -112,7 +132,7 @@ uint8_t Ned6502::ABY() {
 
   absolute_addr = ((hi << 8) | lo) + Y;
   absolute_addr &= 0xFFFF;
-  return ((absolute_addr >> 8) & 0xFF) == ((hi)&0xFF);
+  return ((absolute_addr >> 8) & 0xFF) != ((hi)&0xFF);
 }
 // Indirect Addressing Mode, the operand is a pointer to where
 // the data is located
@@ -142,11 +162,12 @@ uint8_t Ned6502::IND() {
 uint8_t Ned6502::IZX() {
 
   uint16_t offset = read(PC++);
+  uint16_t base = (offset + X) & 0x00FF;
 
-  uint16_t lOfset = (offset + X) & 0x00FF;
-  uint16_t hOfset = (offset + X + 1) & 0x00FF;
+  uint16_t lOfset = read(base & 0x00FF);
+  uint16_t hOfset = read((base + 1) & 0x00FF);
 
-  absolute_addr = (read(hOfset << 8) | read(lOfset));
+  absolute_addr = ((hOfset << 8) | (lOfset));
 
   return 0x00;
 }
@@ -157,13 +178,13 @@ uint8_t Ned6502::IZX() {
 uint8_t Ned6502::IZY() {
   uint16_t t = read(PC++);
 
-  uint16_t hi = read((t + 1)) << 8;
-  uint16_t lo = read(t);
+  uint16_t hi = read((t + 1) & 0x00FF);
+  uint16_t lo = read(t & 0x00FF);
 
-  absolute_addr = hi | lo;
+  absolute_addr = (hi << 8) | lo;
   absolute_addr += Y;
 
-  return (hi & 0xFF) == (absolute_addr & 0xFF);
+  return (hi << 8) != (absolute_addr & 0xFF00);
 }
 // Relative Addressing Mode: The second operand is an offset
 // value from -128 to 127 that will be added to the PC, this is
@@ -194,19 +215,34 @@ void Ned6502::reset() {
   A = 0x00; // accumulator
   X = 0x00; // X index register
   Y = 0x00; // Y index register
+
+  absolute_addr = 0x00;
+  fetched = 0x00;
+  rel_addr = 0x00;
+
+  // reset takes 8 clock cycles and this accounts for it
+  cycles = 8;
 }
 
 // interrupt request
 void Ned6502::irq() {
-  uint16_t offset = 0x0100;
-  write(STKP-- + offset, (PC >> 8) & 0xFF); // pushing the hi byte
-  write(STKP-- + offset, (PC & 0xFF));      // pushing the lo byte
-  write(STKP-- + offset, status);           // pushing the status flag
-  setFlag(Ned6502::I, true);
 
-  // reading from the reset interrupt vector
+  if (getFlag(Ned6502::I) == 0) {
+    uint16_t offset = 0x0100;
+    write(STKP-- + offset, (PC >> 8) & 0xFF); // pushing the hi byte
+    write(STKP-- + offset, (PC & 0xFF));      // pushing the lo byte
+    write(STKP-- + offset, status);           // pushing the status flag
+    setFlag(Ned6502::I, true);
+    setFlag(Ned6502::U, true);
+    setFlag(Ned6502::B, false);
 
-  PC = (read(0xFFFF) << 8) | (read(0xFFFE));
+    // reading from the reset interrupt vector
+
+    PC = (read(0xFFFF) << 8) | (read(0xFFFE));
+
+    // interrupt request takes 7 clock cycles and this accounts for it
+    cycles = 7;
+  }
 }
 
 // Non Maskable Interrupt
@@ -217,15 +253,19 @@ void Ned6502::nmi() {
   write(STKP-- + offset, status);           // status flag
 
   setFlag(Ned6502::I, true);
+  setFlag(Ned6502::U, true);
+  setFlag(Ned6502::B, false);
 
   // jumpting to interrupt vector
   PC = (read(0xFFFB) << 8) | (read(0xFFFA));
+
+  cycles = 8;
 }
 
 // INSTRUCTIONS
 
 uint8_t Ned6502::XXX() {
-  std::cout << "Not Implemented\n";
+  fprintf(stderr, "Not Implemented\n");
   return 0x00;
 }
 
@@ -346,10 +386,14 @@ uint8_t Ned6502::PHA() {
 
 uint8_t Ned6502::PHP() {
   uint16_t offset = 0x0100;
-  setFlag(NedCPUFlags::B, true);
-  setFlag(NedCPUFlags::U, true);
-  write(offset + STKP, status);
+  /* setFlag(NedCPUFlags::B, true); */
+  /* setFlag(NedCPUFlags::U, true); */
+  write(offset + STKP, status | B | U);
+  /* setFlag(NedCPUFlags::B, false); */
+  /* setFlag(NedCPUFlags::U, false); */
+
   STKP--;
+
   return 0x00;
 }
 
@@ -368,6 +412,7 @@ uint8_t Ned6502::PLP() {
   uint16_t offset = 0x0100;
   status = read(++STKP + offset);
   setFlag(NedCPUFlags::U, true);
+  setFlag(NedCPUFlags::B, false);
   return 0x00;
 }
 
@@ -434,12 +479,14 @@ uint8_t Ned6502::ADC() {
 uint8_t Ned6502::SBC() {
   fetched = fetch(absolute_addr) ^ 0x00FF;
 
-  uint16_t res = (uint16_t)A + (uint16_t)fetched + (uint16_t)C;
-  setFlag(NedCPUFlags::C, res > 0xFF);
-  setFlag(NedCPUFlags::V,
-          ((res ^ (uint16_t)A) & ((uint16_t)res ^ fetched)) & 0x0080);
-  setFlag(NedCPUFlags::N, nthBit(res, 7));
-  setFlag(NedCPUFlags::Z, (res & 0x00FF) == 0);
+  uint16_t temp =
+      (uint16_t)A + (uint16_t)fetched + (uint16_t)getFlag(NedCPUFlags::C);
+  setFlag(NedCPUFlags::C, temp > 0xFF);
+  setFlag(NedCPUFlags::V, ((temp ^ (uint16_t)A) & (temp ^ fetched)) & 0x0080);
+  setFlag(NedCPUFlags::N, temp & 0x0080);
+  setFlag(NedCPUFlags::Z, (temp & 0x00FF) == 0);
+
+  A = temp & 0x00FF;
 
   return 0x00;
 }
@@ -603,7 +650,8 @@ uint8_t Ned6502::ROL() {
   fetched = fetch(absolute_addr);
   uint8_t tmp_fetched = fetched;
   fetched = fetched << 1;
-  fetched |= (uint8_t)(C);
+  uint8_t c = getFlag(NedCPUFlags::C);
+  fetched |= (uint8_t)(c);
   setFlag(NedCPUFlags::C, nthBit(tmp_fetched, 7));
   setFlag(NedCPUFlags::Z, fetched == 0x00);
   setFlag(NedCPUFlags::N, nthBit(fetched, 7));
@@ -618,7 +666,9 @@ uint8_t Ned6502::ROR() {
   fetched = fetch(absolute_addr);
   uint8_t tmp_fetched = fetched;
   fetched = fetched >> 1;
-  fetched |= ((uint8_t)C) << 7;
+  uint8_t c = getFlag(NedCPUFlags::C);
+
+  fetched |= (((uint8_t)c) << 7);
   setFlag(NedCPUFlags::C, nthBit(tmp_fetched, 0));
   setFlag(NedCPUFlags::Z, fetched == 0x00);
   setFlag(NedCPUFlags::N, nthBit(fetched, 7));
@@ -650,8 +700,10 @@ uint8_t Ned6502::JSR() {
 
 uint8_t Ned6502::RTS() {
   uint16_t offset = 0x0100;
-  uint8_t lo = read(++STKP + offset);
-  uint8_t hi = read(++STKP + offset);
+  STKP++;
+  uint8_t lo = read(STKP + offset);
+  STKP++;
+  uint8_t hi = read(STKP + offset);
   PC = ((hi << 8) | lo) + 1;
   return 0x00;
 }
@@ -661,7 +713,7 @@ uint8_t Ned6502::RTS() {
 
 // Branch on Carry Clear
 uint8_t Ned6502::BCC() {
-  if (C == 0) {
+  if (!getFlag(NedCPUFlags::C)) {
     int16_t new_addr = (int16_t)PC + rel_addr;
     PC = new_addr;
     return 0x01;
@@ -670,7 +722,7 @@ uint8_t Ned6502::BCC() {
 }
 // Branch on Carry Set
 uint8_t Ned6502::BCS() {
-  if (C == 1) {
+  if (getFlag(NedCPUFlags::C)) {
     int16_t new_addr = (int16_t)PC + rel_addr;
     PC = new_addr;
     return 0x01;
@@ -680,7 +732,7 @@ uint8_t Ned6502::BCS() {
 // Branch on Result Zero
 
 uint8_t Ned6502::BEQ() {
-  if (Z == 1) {
+  if (getFlag(NedCPUFlags::Z)) {
     int16_t new_addr = (int16_t)PC + rel_addr;
     PC = new_addr;
     return 0x01;
@@ -688,7 +740,7 @@ uint8_t Ned6502::BEQ() {
   return 0x00;
 }
 uint8_t Ned6502::BMI() {
-  if (N == 1) {
+  if (getFlag(NedCPUFlags::N)) {
     int16_t new_addr = (int16_t)PC + rel_addr;
     PC = new_addr;
     return 0x01;
@@ -696,7 +748,7 @@ uint8_t Ned6502::BMI() {
   return 0x00;
 }
 uint8_t Ned6502::BNE() {
-  if (Z == 0) {
+  if (!getFlag(NedCPUFlags::Z)) {
     int16_t new_addr = (int16_t)PC + rel_addr;
     PC = new_addr;
     return 0x01;
@@ -704,7 +756,7 @@ uint8_t Ned6502::BNE() {
   return 0x00;
 }
 uint8_t Ned6502::BPL() {
-  if (N == 0) {
+  if (!getFlag(NedCPUFlags::N)) {
     int16_t new_addr = (int16_t)PC + rel_addr;
     PC = new_addr;
     return 0x01;
@@ -713,7 +765,7 @@ uint8_t Ned6502::BPL() {
 }
 uint8_t Ned6502::BVC() {
 
-  if (V == 0) {
+  if (!getFlag(NedCPUFlags::V)) {
     int16_t new_addr = (int16_t)PC + rel_addr;
     PC = new_addr;
     return 0x01;
@@ -722,7 +774,7 @@ uint8_t Ned6502::BVC() {
 }
 uint8_t Ned6502::BVS() {
 
-  if (V == 1) {
+  if (getFlag(NedCPUFlags::V)) {
     int16_t new_addr = (int16_t)PC + rel_addr;
     PC = new_addr;
     return 0x01;
@@ -755,7 +807,7 @@ uint8_t Ned6502::BRK() {
   write(offset + STKP--, return_address & 0x00FF);
 
   setFlag(NedCPUFlags::B, true);
-  setFlag(NedCPUFlags::U, true);
+  /* setFlag(NedCPUFlags::U, true); */
 
   write(offset + STKP--, status);
 
@@ -765,4 +817,11 @@ uint8_t Ned6502::BRK() {
   setFlag(NedCPUFlags::I, true);
   PC = (hi << 8) | lo;
   return 0x00;
+}
+void Ned6502::logCpuState() {
+  fprintf(logFile,
+          "%04X  %02X %02X %02X  %s $%04X                       A:%02X X:%02X "
+          "Y:%02X P:%02X SP:%02X PPU:%4d,%2d CYC:%lld\n",
+          PC, opcode, 0x00, 0x00, "instr", PC - 1, A, X, Y, status, STKP, 0x00,
+          0x00, total_cycles);
 }
