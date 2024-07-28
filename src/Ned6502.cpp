@@ -13,9 +13,10 @@ void NedNes::Ned6502::setFlag(Ned6502::NedCPUFlags f, bool v) {
 }
 
 Ned6502::Ned6502(NedBus *_bus) { bus = _bus; }
-uint8_t Ned6502::read(uint16_t addr) { return bus->read(addr); }
-void Ned6502::write(uint16_t addr, uint8_t val) { bus->write(addr, val); }
+uint8_t Ned6502::read(uint16_t addr) { return bus->cpuRead(addr); }
+void Ned6502::write(uint16_t addr, uint8_t val) { bus->cpuWrite(addr, val); }
 void Ned6502::connectBus(NedBus *_bus) { bus = _bus; }
+
 uint8_t Ned6502::fetch(uint16_t addr) {
   if (opcodes[opcode].addr_mode != IMPLIED &&
       opcodes[opcode].addr_mode != ACCUMULATOR) {
