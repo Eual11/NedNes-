@@ -88,7 +88,6 @@ void NedNes::Ned2C02::cpuWrite(uint16_t addr, uint8_t data) {
 
 uint8_t NedNes::Ned2C02::ppuRead(uint8_t addr) {
 
-  addr &= 0x3FFF;
   uint8_t data = 0x00;
 
   // do something idk yet lmao
@@ -101,3 +100,6 @@ void NedNes::Ned2C02::ppuWrite(uint16_t addr, uint8_t data) {
 }
 
 void NedNes::Ned2C02::connectBus(std::shared_ptr<NedBus> _bus) { bus = _bus; }
+void NedNes::Ned2C02::connectCart(std::shared_ptr<NedCartrdige> _cart) {
+  cart = _cart;
+}

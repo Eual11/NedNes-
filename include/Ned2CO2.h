@@ -7,6 +7,7 @@
 #include <stdint.h>
 namespace NedNes {
 class NedBus;
+class NedCartrdige;
 class Ned2C02 {
 
 public:
@@ -28,8 +29,10 @@ public:
   // scanlines and cycles
 
   std::shared_ptr<NedBus> bus;
+  std::shared_ptr<NedCartrdige> cart;
 
   void connectBus(std::shared_ptr<NedBus>);
+  void connectCart(std::shared_ptr<NedCartrdige>);
 
 private:
   unsigned int cycles = 0;
