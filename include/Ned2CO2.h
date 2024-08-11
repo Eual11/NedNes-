@@ -2,12 +2,12 @@
 #define __NED2CO2__H
 
 // Ned's PPU: 2C02
+#include "../include/NedCartridge.h"
 #include <cstdint>
 #include <memory>
 #include <stdint.h>
 namespace NedNes {
 class NedBus;
-class NedCartrdige;
 class Ned2C02 {
 
 public:
@@ -23,6 +23,9 @@ public:
 
   uint8_t ppuRead(uint8_t addr);
   void ppuWrite(uint16_t addr, uint8_t data);
+
+  // ppu clock
+  void clock();
 
   // connecting to cartage and BUS
 

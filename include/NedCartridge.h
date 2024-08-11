@@ -22,7 +22,7 @@ private:
   uint8_t nCHRBanks;
   std::vector<uint8_t> PGRMemory;
   std::vector<uint8_t> CHRMemory;
-  std::shared_ptr<NedMapper> mMapper;
+  std::shared_ptr<NedMapper> mMapper = nullptr;
 
   bool valid = false;
   uint8_t mapperID;

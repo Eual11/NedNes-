@@ -1,8 +1,11 @@
 #pragma once
+#include <memory>
+#define _CRT_SECURE_NO_WARNINGS
 #include "../include/NedBus.h"
 #include <array>
 #define LOGMODE
 #include <iostream>
+#include <map>
 #include <stdint.h>
 #include <string>
 
@@ -11,9 +14,6 @@
 class NedBus;
 namespace NedNes {
 class Ned6502 {
-
-private:
-  // bus
 
 public:
   // registers
@@ -25,15 +25,16 @@ public:
   uint8_t status = 0x00;
   bool complete = false;
   long long total_cycles = 0;
+  void clock();
 
 #ifdef LOGMODE
   FILE *logFile;
 #endif
-  NedBus *bus;
+  std::shared_ptr<NedBus> bus;
 
   Ned6502() = default;
-  Ned6502(NedBus *_bus);
-  void connectBus(NedBus *bus);
+  Ned6502(std::shared_ptr<NedBus> _bus);
+  void connectBus(std::shared_ptr<NedBus>);
 #ifdef LOGMODE
   void logCpuState();
 #endif
@@ -53,6 +54,12 @@ public:
 
   bool getFlag(NedCPUFlags f);
   void setFlag(NedCPUFlags f, bool v);
+
+  // this method will return a map of address and dissabpled instruction
+  // it will look into nCount amout of address starting from the current PC and
+  // dissasable them to this format
+  // $8000: A9 01     LDA #$01
+  std::map<uint16_t, std::string> disassemble(uint16_t count);
   // variables to store data, address
   uint16_t absolute_addr = 0x00;
   int16_t rel_addr = 0x00;
@@ -73,7 +80,6 @@ public:
   void irq();
 
   // the ticking clock;
-  void clock();
 
   // fills the fetched variable by the correct data
   uint8_t fetch(uint16_t addr);
