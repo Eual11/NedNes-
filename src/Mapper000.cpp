@@ -1,4 +1,5 @@
 #include "../include/Mapper000.h"
+#include <stdio.h>
 
 namespace NedNes {
 
@@ -9,6 +10,7 @@ Mapper000::Mapper000(unsigned int npgr, unsigned int nchr)
 }
 
 bool Mapper000::cpuMapReadAddress(uint16_t addr, uint32_t &mapped) {
+
   if (addr >= 0x8000 && addr <= 0xFFFF) {
     mapped = nPGRBanks == 1 ? (addr & 0x3FFF) : (addr & 0x7FFF);
     return true;

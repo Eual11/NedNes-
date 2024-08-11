@@ -1,4 +1,6 @@
 #include "../include/Ned2CO2.h"
+#define _CRT_SECURE_NO_WARNINGS
+#include <memory>
 
 NedNes::Ned2C02::Ned2C02() {
   // TODO: load the palette tables
@@ -102,4 +104,8 @@ void NedNes::Ned2C02::ppuWrite(uint16_t addr, uint8_t data) {
 void NedNes::Ned2C02::connectBus(std::shared_ptr<NedBus> _bus) { bus = _bus; }
 void NedNes::Ned2C02::connectCart(std::shared_ptr<NedCartrdige> _cart) {
   cart = _cart;
+}
+
+void NedNes::Ned2C02::clock() {
+  // I don't know what to do lmao
 }

@@ -1,6 +1,7 @@
 #include "../include/Ned6502.h"
+#define _CRT_SECURE_NO_WARNINGS
 #include <stdint.h>
-
+#include <string>
 using namespace NedNes;
 bool Ned6502::getFlag(Ned6502::NedCPUFlags f) {
   return ((status & f) > 0) ? 1 : 0;
@@ -12,10 +13,10 @@ void NedNes::Ned6502::setFlag(Ned6502::NedCPUFlags f, bool v) {
     status &= ~f;
 }
 
-Ned6502::Ned6502(NedBus *_bus) { bus = _bus; }
+NedNes::Ned6502::Ned6502(std::shared_ptr<NedBus> _bus) { bus = _bus; }
 uint8_t Ned6502::read(uint16_t addr) { return bus->cpuRead(addr); }
 void Ned6502::write(uint16_t addr, uint8_t val) { bus->cpuWrite(addr, val); }
-void Ned6502::connectBus(NedBus *_bus) { bus = _bus; }
+void Ned6502::connectBus(std::shared_ptr<NedBus> _bus) { bus = _bus; }
 
 uint8_t Ned6502::fetch(uint16_t addr) {
   if (opcodes[opcode].addr_mode != IMPLIED &&
@@ -27,9 +28,7 @@ uint8_t Ned6502::fetch(uint16_t addr) {
 
 void Ned6502::clock() {
 
-  /* printf("%x: %x\n", opcode, cycles); */
   if (cycles == 0) {
-    // fetching opcode of the current instruction from the bus
     opcode = read(PC++);
 
     if (opcode == 0x00)
@@ -819,10 +818,125 @@ uint8_t Ned6502::BRK() {
   PC = (hi << 8) | lo;
   return 0x00;
 }
+#ifdef LOGMODE
 void Ned6502::logCpuState() {
   fprintf(logFile,
           "%04X  %02X %02X %02X  %s $%04X                       A:%02X X:%02X "
           "Y:%02X P:%02X SP:%02X PPU:%4d,%2d CYC:%lld\n",
           PC, opcode, 0x00, 0x00, "instr", PC - 1, A, X, Y, status, STKP, 0x00,
           0x00, total_cycles);
+}
+#endif
+std::map<uint16_t, std::string> Ned6502::disassemble(uint16_t count) {
+
+  // getting the current opcode fro the program counter
+
+  // $8000: A9 01     LDA #$01
+  std::map<uint16_t, std::string> disassembled;
+  uint16_t tmp_PC = PC;
+
+  for (int i = 0; i < count; i++) {
+    // fetch N Instructions
+
+    uint16_t opcode_addr = tmp_PC;
+    uint8_t opcode = read(tmp_PC++);
+    INSTRUCTION cur_opcode = opcodes[opcode];
+
+    uint8_t (Ned6502::*addr_mode)() = cur_opcode.addr_mode;
+
+    std::string mnemonic = cur_opcode.name;
+    char buffer[64] = {'\0'};
+    if (addr_mode == &Ned6502::IMP) {
+      // Implied Instruction
+      sprintf(buffer, "%X\t%s ", opcode, cur_opcode.name.c_str());
+    }
+
+    else if (addr_mode == &Ned6502::IMM) {
+      // Immediate Mode Instruction
+      uint8_t data = read(tmp_PC++);
+      sprintf(buffer, "%X %X\t%s #$%X", opcode, data, mnemonic.c_str(), data);
+    } else if (addr_mode == &Ned6502::ACC) {
+      // Accumulator Addressing Mode
+      // Syntax: ASL A
+      sprintf(buffer, "%X\t%s A", opcode, mnemonic.c_str());
+    } else if (addr_mode == &Ned6502::ZP) {
+      // Zero Page Addressing Mode Instruction
+      uint16_t addr = read(tmp_PC++);
+      addr &= 0x00FF;
+      sprintf(buffer, "%X %X\t%s $%X", opcode, addr, mnemonic.c_str(), addr);
+    } else if (addr_mode == &Ned6502::ZPX) {
+      // Zero Page X Indexed
+      // Syntax: LDA $10,X
+      uint16_t addr = read(tmp_PC++);
+      addr &= 0x00FF;
+      sprintf(buffer, "%X %X\t%s $%X, X", opcode, addr, mnemonic.c_str(), addr);
+    } else if (addr_mode == &Ned6502::ZPY) {
+      // Zero Page Y Indexed
+      // Syntax: LDA $10,Y
+      uint16_t addr = read(tmp_PC++);
+      addr &= 0x00FF;
+      sprintf(buffer, "%X %X\t%s $%X, Y", opcode, addr, mnemonic.c_str(), addr);
+    } else if (addr_mode == &Ned6502::ABS) {
+      // Absolute Addressing Mode
+      // Syntax: LDA $1000
+      uint8_t lo = read(tmp_PC++);
+      uint8_t hi = read(tmp_PC++);
+
+      uint16_t abs_addr = ((hi << 8) | lo);
+      sprintf(buffer, "%X %X %X\t%s $%X", opcode, lo, hi, mnemonic.c_str(),
+              abs_addr);
+    } else if (addr_mode == &Ned6502::ABX) {
+      // Absolute X Indexed Addressing mode
+      // Syntax: LDA $1000, X
+      uint8_t lo = read(tmp_PC++);
+      uint8_t hi = read(tmp_PC++);
+      uint16_t abs_addr = ((hi << 8) | lo);
+      sprintf(buffer, "%X %X %X\t%s $%X, X", opcode, lo, hi, mnemonic.c_str(),
+              abs_addr);
+    } else if (addr_mode == &Ned6502::ABY) {
+      // Absolute Y Indexed Addressing mode
+      // Syntax: LDA $1000, Y
+      uint8_t lo = read(tmp_PC++);
+      uint8_t hi = read(tmp_PC++);
+      uint16_t abs_addr = ((hi << 8) | lo);
+      sprintf(buffer, "%X %X %X\t%s $%X, Y", opcode, lo, hi, mnemonic.c_str(),
+              abs_addr);
+    } else if (addr_mode == &Ned6502::IND) {
+      // Indirect Addressing Mode
+      // Syntax: JMP ($1000)
+      uint8_t lo = read(tmp_PC++);
+      uint8_t hi = read(tmp_PC++);
+
+      uint16_t abs_addr = ((hi << 8) | lo);
+      sprintf(buffer, "%X %X %X\t%s ($%X)", opcode, lo, hi, mnemonic.c_str(),
+              abs_addr);
+    } else if (addr_mode == &Ned6502::IZX) {
+      // Indirect X indexed addressing mode
+      // Syntax: LDA ($10, X)
+
+      uint8_t abs_addr = read(tmp_PC++) & 0x00FF;
+      sprintf(buffer, "%X %X\t%s ($%X, X)", opcode, abs_addr, mnemonic.c_str(),
+              abs_addr);
+    } else if (addr_mode == &Ned6502::IZY) {
+      // Indirect Y indexed addressing mode
+      // Syntax: LDA ($10), Y
+
+      uint8_t abs_addr = read(tmp_PC++) & 0x00FF;
+      sprintf(buffer, "%X %X\t%s ($%X), Y", opcode, abs_addr, mnemonic.c_str(),
+              abs_addr);
+    } else if (addr_mode == &Ned6502::REL) {
+      // Relateive Addressing Mode
+      // Syntax: BEQ Label
+      int8_t r_addr = read(tmp_PC++);
+      if (r_addr & 0x80) {
+        r_addr |= 0xFF00;
+      }
+      int16_t new_addr = (int16_t)opcode_addr + r_addr;
+      sprintf(buffer, "%X %X\t%s %X", opcode, r_addr, mnemonic.c_str(),
+              (uint16_t)new_addr);
+    }
+
+    disassembled[opcode_addr] = std::string(buffer);
+  }
+  return disassembled;
 }

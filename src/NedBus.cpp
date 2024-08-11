@@ -1,5 +1,8 @@
 #include "../include/NedBus.h"
+#define _CRT_SECURE_NO_WARNINGS
+#include <memory>
 #include <stdint.h>
+#include <stdio.h>
 
 // NedBus Constructor, currently only just filling the ram with 0s
 NedNes::NedBus::NedBus() { std::fill(std::begin(ram), std::end(ram), 0x00); }
@@ -33,6 +36,22 @@ void NedNes::NedBus::cpuWrite(uint16_t addr, uint8_t val) {
 }
 
 // connecting a cpu to the bus
-void NedNes::NedBus::connectCpu(NedNes::Ned6502 *_cpu) { cpu = _cpu; }
-
+void NedNes::NedBus::connectCpu(std::shared_ptr<Ned6502> _cpu) { cpu = _cpu; }
 void NedNes::NedBus::connectPpu(std::shared_ptr<Ned2C02> _ppu) { ppu = _ppu; }
+void NedNes::NedBus::connectCartridge(std::shared_ptr<NedCartrdige> _cart) {
+
+  this->cart = _cart;
+}
+void NedNes::NedBus::clock() {
+
+  ppu->clock();
+  if (SystemClock % 3 == 0) {
+    cpu->clock();
+    auto stuff = cpu->disassemble(1);
+
+    for (auto &d : stuff) {
+      printf("$%X %s\n", d.first, d.second.c_str());
+    }
+  }
+  SystemClock++;
+}

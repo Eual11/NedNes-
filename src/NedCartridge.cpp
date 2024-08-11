@@ -1,9 +1,11 @@
 #include "../include/NedCartridge.h"
 #include "../include/Mapper000.h"
 #include <fstream>
+#include <iostream>
 #include <memory>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 namespace NedNes {
 
@@ -46,6 +48,14 @@ NedCartrdige::NedCartrdige(std::string filename) {
       switch (mapperID) {
       case 0x00: {
         mMapper = std::make_shared<Mapper000>(nPGRBanks, nCHRBanks);
+        break;
+      }
+
+      default: {
+        fprintf(stderr,
+                "Mapper %d hasn't been Implemented Yet, Please Be Patient ^^\n",
+                mapperID);
+        exit(1);
         break;
       }
       }

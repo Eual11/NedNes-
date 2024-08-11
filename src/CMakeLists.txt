@@ -1,8 +1,12 @@
+
 set(EXECUTABLE_NAME "e")
-
+message("WHAT THE FUCK")
 include_directories(${CMAKE_SOURCE_DIR}/include $ENV{CPLUS_INCLUDE_PATH})
-
-
+set(NED_LIB_DIR ${CMAKE_SOURCE_DIR}/lib)
+set(SDL2 ${NED_LIB_DIR}/SDL2.lib)
+message("SDL2 is ${SDL2}")
+set(SDL2_Main ${NED_LIB_DIR}/SDL2main.lib)
+set(SDL2_ttf ${NED_LIB_DIR}/SDL2_ttf.lib)
 add_executable(${EXECUTABLE_NAME} ./main.cpp)
 add_library(Ned6502 STATIC ./Ned6502.cpp)
 add_library(Ned2C02 STATIC ./Ned2CO2.cpp)
@@ -14,7 +18,7 @@ add_library(Mapper000 STATIC ./Mapper000.cpp)
 
 target_link_libraries(Mapper000 PRIVATE NedMapper )
 target_link_libraries(NedCartridge PRIVATE Mapper000 PRIVATE NedMapper )
-target_link_libraries(${EXECUTABLE_NAME} PRIVATE NedCartridge )
+target_link_libraries(${EXECUTABLE_NAME} PRIVATE NedBus PRIVATE Ned6502 PRIVATE Ned2C02 PRIVATE NedCartridge PRIVATE ${SDL2} PRIVATE ${SDL2_Main} PRIVATE ${SDL2_ttf}  )
 
 target_compile_features(${EXECUTABLE_NAME} PRIVATE cxx_std_17)
 set_target_properties(${EXECUTABLE_NAME} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
