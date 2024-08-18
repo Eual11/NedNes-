@@ -1,9 +1,9 @@
 #pragma once
-#include <memory>
 #define _CRT_SECURE_NO_WARNINGS
 #include "../include/NedBus.h"
 #include <array>
-#define LOGMODE
+#include <memory>
+/* #define LOGMODE */
 #include <iostream>
 #include <map>
 #include <stdint.h>
@@ -23,9 +23,9 @@ public:
   uint8_t STKP = 0x00; // stack pointer
   uint16_t PC = 0x00;  // program counter
   uint8_t status = 0x00;
-  bool complete = false;
   long long total_cycles = 0;
   void clock();
+  bool complete();
 
 #ifdef LOGMODE
   FILE *logFile;

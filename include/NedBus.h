@@ -14,9 +14,6 @@ class NedBus {
 
   // conencted devices
 private:
-  std::shared_ptr<Ned6502> cpu = nullptr;
-  std::shared_ptr<Ned2C02> ppu = nullptr;
-  std::shared_ptr<NedCartrdige> cart = nullptr;
   //  a whooping 2KB of Nes ram!
   std::array<uint8_t, 1024 * 2> ram;
 
@@ -29,6 +26,10 @@ public:
   void connectCpu(std::shared_ptr<Ned6502>);
   void connectPpu(std::shared_ptr<Ned2C02>);
   void connectCartridge(std::shared_ptr<NedCartrdige>);
+  std::shared_ptr<Ned6502> cpu = nullptr;
+  std::shared_ptr<Ned2C02> ppu = nullptr;
+  std::shared_ptr<NedCartrdige> cart = nullptr;
+
   void clock();
   uint32_t SystemClock = 0;
 };

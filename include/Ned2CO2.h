@@ -40,6 +40,8 @@ public:
 private:
   unsigned int cycles = 0;
   unsigned int scanlines = 0;
+  unsigned int clockCount = 0;
+  bool frameComplete = false;
 
   uint8_t paletteTable[32];   // 32Byte  palette
   uint8_t nameTable[4][1024]; // name table used to store background information
