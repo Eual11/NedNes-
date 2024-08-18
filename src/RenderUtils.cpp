@@ -116,3 +116,24 @@ SDL_Rect DrawCPUReg(std::shared_ptr<NedNes::Ned6502> cpu,
   R.h = Ypos + line_spacing;
   return R;
 }
+void DrawRect(SDL_Renderer *renderer, int x, int y, int w, int h,
+              Uint32 color) {
+  SDL_SetRenderDrawColor(renderer, (color >> 24) & 0xFF, (color >> 16) & 0xFF,
+                         (color >> 8) & 0xFF, color & 0xFF);
+  SDL_Rect rect = {x, y, w, h};
+  SDL_RenderFillRect(renderer, &rect);
+}
+
+// Function to display the NES color palettes
+void DisplayNESColorPalettes(SDL_Renderer *renderer,
+                             std::shared_ptr<NedNes::Ned2C02> ppu, int startX,
+                             int startY, int swatchSize, int spacing) {
+  for (uint8_t palette = 0; palette < 8; palette++) {
+    for (uint8_t idx = 0; idx < 4; idx++) {
+      Uint32 color = ppu->getColorFromPalette(palette, idx);
+      int x = startX + palette * (4 * swatchSize + spacing) + idx * swatchSize;
+      int y = startY;
+      DrawRect(renderer, x, y, swatchSize, swatchSize, color);
+    }
+  }
+}

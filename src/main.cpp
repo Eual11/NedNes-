@@ -22,18 +22,26 @@ SDL_Renderer *gRenderer = nullptr;
 
 TTF_Font *global_font = nullptr;
 
+// Screen and pattern table area
+//
+SDL_Rect scrArea = {0, 0, 256, 240};
+SDL_Rect patternTableArea1 = {0, 400, 128, 128};
+SDL_Rect patternTableArea2 = {256, 400, 128, 128};
+
 void init();
 
 void close_program();
 
 int main(int argc, char **argv) {
 
-  auto cart = std::make_shared<NedNes::NedCartrdige>("../tools/e.nes");
+  init();
+  auto cart = std::make_shared<NedNes::NedCartrdige>(
+      "../rom/games/Super Mario Bros (E).nes");
 
   // setting up nednes bus
   auto EmuBus = std::make_shared<NedNes::NedBus>();
   auto CPU = std::make_shared<NedNes::Ned6502>();
-  auto PPU = std::make_shared<NedNes::Ned2C02>();
+  auto PPU = std::make_shared<NedNes::Ned2C02>(gRenderer);
   PPU->connectBus(EmuBus);
   PPU->connectCart(cart);
 
@@ -44,7 +52,6 @@ int main(int argc, char **argv) {
   /* CPU->logFile = f; */
   CPU->reset();
   printf("Program %s running with %d args\n", argv[0], argc);
-  init();
   if (cart->imageValid()) {
     printf("Rom Loaded\n");
   }
@@ -114,6 +121,14 @@ int main(int argc, char **argv) {
 
       col = {0xff, 0xff, 0xff, 0x00};
     }
+    SDL_RenderCopy(gRenderer, EmuBus->ppu->getScreenTexture(), nullptr,
+                   &scrArea);
+    SDL_RenderCopy(gRenderer, EmuBus->ppu->getPatternTable(0, 0), nullptr,
+                   &patternTableArea1);
+    SDL_RenderCopy(gRenderer, EmuBus->ppu->getPatternTable(1, 0), nullptr,
+                   &patternTableArea2);
+
+    DisplayNESColorPalettes(gRenderer, EmuBus->ppu, 400, 400, 6, 10);
     SDL_RenderPresent(gRenderer);
   }
 
