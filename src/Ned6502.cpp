@@ -31,9 +31,6 @@ void Ned6502::clock() {
   if (cycles == 0) {
     opcode = read(PC++);
 
-    if (opcode == 0x00)
-      complete = true;
-
     INSTRUCTION cur_opcode = opcodes[opcode];
 
     cycles = cur_opcode.cycles;
@@ -132,7 +129,7 @@ uint8_t Ned6502::ABY() {
 
   absolute_addr = ((hi << 8) | lo) + Y;
   absolute_addr &= 0xFFFF;
-  return ((absolute_addr >> 8) & 0xFF) != ((hi)&0xFF);
+  return ((absolute_addr >> 8) & 0xFF) != ((hi) & 0xFF);
 }
 // Indirect Addressing Mode, the operand is a pointer to where
 // the data is located
@@ -848,34 +845,36 @@ std::map<uint16_t, std::string> Ned6502::disassemble(uint16_t count) {
     char buffer[64] = {'\0'};
     if (addr_mode == &Ned6502::IMP) {
       // Implied Instruction
-      sprintf(buffer, "%X\t%s ", opcode, cur_opcode.name.c_str());
+      sprintf(buffer, "%X   %s ", opcode, cur_opcode.name.c_str());
     }
 
     else if (addr_mode == &Ned6502::IMM) {
       // Immediate Mode Instruction
       uint8_t data = read(tmp_PC++);
-      sprintf(buffer, "%X %X\t%s #$%X", opcode, data, mnemonic.c_str(), data);
+      sprintf(buffer, "%X %X   %s #$%X", opcode, data, mnemonic.c_str(), data);
     } else if (addr_mode == &Ned6502::ACC) {
       // Accumulator Addressing Mode
       // Syntax: ASL A
-      sprintf(buffer, "%X\t%s A", opcode, mnemonic.c_str());
+      sprintf(buffer, "%X   %s A", opcode, mnemonic.c_str());
     } else if (addr_mode == &Ned6502::ZP) {
       // Zero Page Addressing Mode Instruction
       uint16_t addr = read(tmp_PC++);
       addr &= 0x00FF;
-      sprintf(buffer, "%X %X\t%s $%X", opcode, addr, mnemonic.c_str(), addr);
+      sprintf(buffer, "%X %X   %s $%X", opcode, addr, mnemonic.c_str(), addr);
     } else if (addr_mode == &Ned6502::ZPX) {
       // Zero Page X Indexed
       // Syntax: LDA $10,X
       uint16_t addr = read(tmp_PC++);
       addr &= 0x00FF;
-      sprintf(buffer, "%X %X\t%s $%X, X", opcode, addr, mnemonic.c_str(), addr);
+      sprintf(buffer, "%X %X   %s $%X, X", opcode, addr, mnemonic.c_str(),
+              addr);
     } else if (addr_mode == &Ned6502::ZPY) {
       // Zero Page Y Indexed
       // Syntax: LDA $10,Y
       uint16_t addr = read(tmp_PC++);
       addr &= 0x00FF;
-      sprintf(buffer, "%X %X\t%s $%X, Y", opcode, addr, mnemonic.c_str(), addr);
+      sprintf(buffer, "%X %X   %s $%X, Y", opcode, addr, mnemonic.c_str(),
+              addr);
     } else if (addr_mode == &Ned6502::ABS) {
       // Absolute Addressing Mode
       // Syntax: LDA $1000
@@ -883,7 +882,7 @@ std::map<uint16_t, std::string> Ned6502::disassemble(uint16_t count) {
       uint8_t hi = read(tmp_PC++);
 
       uint16_t abs_addr = ((hi << 8) | lo);
-      sprintf(buffer, "%X %X %X\t%s $%X", opcode, lo, hi, mnemonic.c_str(),
+      sprintf(buffer, "%X %X %X   %s $%X", opcode, lo, hi, mnemonic.c_str(),
               abs_addr);
     } else if (addr_mode == &Ned6502::ABX) {
       // Absolute X Indexed Addressing mode
@@ -891,7 +890,7 @@ std::map<uint16_t, std::string> Ned6502::disassemble(uint16_t count) {
       uint8_t lo = read(tmp_PC++);
       uint8_t hi = read(tmp_PC++);
       uint16_t abs_addr = ((hi << 8) | lo);
-      sprintf(buffer, "%X %X %X\t%s $%X, X", opcode, lo, hi, mnemonic.c_str(),
+      sprintf(buffer, "%X %X %X   %s $%X, X", opcode, lo, hi, mnemonic.c_str(),
               abs_addr);
     } else if (addr_mode == &Ned6502::ABY) {
       // Absolute Y Indexed Addressing mode
@@ -899,7 +898,7 @@ std::map<uint16_t, std::string> Ned6502::disassemble(uint16_t count) {
       uint8_t lo = read(tmp_PC++);
       uint8_t hi = read(tmp_PC++);
       uint16_t abs_addr = ((hi << 8) | lo);
-      sprintf(buffer, "%X %X %X\t%s $%X, Y", opcode, lo, hi, mnemonic.c_str(),
+      sprintf(buffer, "%X %X %X   %s $%X, Y", opcode, lo, hi, mnemonic.c_str(),
               abs_addr);
     } else if (addr_mode == &Ned6502::IND) {
       // Indirect Addressing Mode
@@ -908,21 +907,21 @@ std::map<uint16_t, std::string> Ned6502::disassemble(uint16_t count) {
       uint8_t hi = read(tmp_PC++);
 
       uint16_t abs_addr = ((hi << 8) | lo);
-      sprintf(buffer, "%X %X %X\t%s ($%X)", opcode, lo, hi, mnemonic.c_str(),
+      sprintf(buffer, "%X %X %X   %s ($%X)", opcode, lo, hi, mnemonic.c_str(),
               abs_addr);
     } else if (addr_mode == &Ned6502::IZX) {
       // Indirect X indexed addressing mode
       // Syntax: LDA ($10, X)
 
       uint8_t abs_addr = read(tmp_PC++) & 0x00FF;
-      sprintf(buffer, "%X %X\t%s ($%X, X)", opcode, abs_addr, mnemonic.c_str(),
+      sprintf(buffer, "%X %X   %s ($%X, X)", opcode, abs_addr, mnemonic.c_str(),
               abs_addr);
     } else if (addr_mode == &Ned6502::IZY) {
       // Indirect Y indexed addressing mode
       // Syntax: LDA ($10), Y
 
       uint8_t abs_addr = read(tmp_PC++) & 0x00FF;
-      sprintf(buffer, "%X %X\t%s ($%X), Y", opcode, abs_addr, mnemonic.c_str(),
+      sprintf(buffer, "%X %X   %s ($%X), Y", opcode, abs_addr, mnemonic.c_str(),
               abs_addr);
     } else if (addr_mode == &Ned6502::REL) {
       // Relateive Addressing Mode
@@ -932,7 +931,7 @@ std::map<uint16_t, std::string> Ned6502::disassemble(uint16_t count) {
         r_addr |= 0xFF00;
       }
       int16_t new_addr = (int16_t)opcode_addr + r_addr;
-      sprintf(buffer, "%X %X\t%s %X", opcode, r_addr, mnemonic.c_str(),
+      sprintf(buffer, "%X %X   %s %X", opcode, r_addr, mnemonic.c_str(),
               (uint16_t)new_addr);
     }
 
@@ -940,3 +939,4 @@ std::map<uint16_t, std::string> Ned6502::disassemble(uint16_t count) {
   }
   return disassembled;
 }
+bool Ned6502::complete() { return cycles == 0; }

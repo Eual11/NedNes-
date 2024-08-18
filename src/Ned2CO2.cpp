@@ -1,5 +1,5 @@
-#include "../include/Ned2CO2.h"
 #define _CRT_SECURE_NO_WARNINGS
+#include "../include/Ned2CO2.h"
 #include <memory>
 
 NedNes::Ned2C02::Ned2C02() {
@@ -107,5 +107,18 @@ void NedNes::Ned2C02::connectCart(std::shared_ptr<NedCartrdige> _cart) {
 }
 
 void NedNes::Ned2C02::clock() {
-  // I don't know what to do lmao
+
+  // advancing the clock count
+  clockCount = 0;
+
+  cycles++;
+
+  if (cycles >= 341) {
+    cycles = 0;
+    scanlines++;
+  }
+  if (scanlines >= 261) {
+    scanlines = -1;
+    frameComplete = true;
+  }
 }

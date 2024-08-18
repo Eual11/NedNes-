@@ -14,11 +14,12 @@ add_library(NedBus STATIC ./NedBus.cpp)
 add_library(NedCartridge STATIC ./NedCartridge.cpp)
 add_library(NedMapper STATIC ./NedMapper.cpp)
 add_library(Mapper000 STATIC ./Mapper000.cpp)
+add_library(RenderUtils ./RenderUtils.cpp)
 
-
+target_link_libraries(RenderUtils PRIVATE ${SDL2} PRIVATE ${SDL2_Main} PRIVATE ${SDL2_ttf})
 target_link_libraries(Mapper000 PRIVATE NedMapper )
 target_link_libraries(NedCartridge PRIVATE Mapper000 PRIVATE NedMapper )
-target_link_libraries(${EXECUTABLE_NAME} PRIVATE NedBus PRIVATE Ned6502 PRIVATE Ned2C02 PRIVATE NedCartridge PRIVATE ${SDL2} PRIVATE ${SDL2_Main} PRIVATE ${SDL2_ttf}  )
+target_link_libraries(${EXECUTABLE_NAME} PRIVATE NedBus PRIVATE Ned6502 PRIVATE Ned2C02 PRIVATE NedCartridge PRIVATE ${SDL2} PRIVATE ${SDL2_Main} PRIVATE ${SDL2_ttf} PRIVATE RenderUtils  )
 
 target_compile_features(${EXECUTABLE_NAME} PRIVATE cxx_std_17)
 set_target_properties(${EXECUTABLE_NAME} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})

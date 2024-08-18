@@ -1,17 +1,20 @@
-#include "../include/NedNes.h"
-#include <corecrt_wstdio.h>
-#include <stdio.h>
+#include <SDL2/SDL_keycode.h>
+#include <string>
 #define _CRT_SECURE_NO_WARNINGS
+#include "../include/NedNes.h"
+#include "../include/RenderUtils.h"
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_error.h>
 #include <SDL2/SDL_events.h>
 #include <SDL2/SDL_render.h>
 #include <SDL2/SDL_ttf.h>
 #include <SDL2/SDL_video.h>
+#include <corecrt_wstdio.h>
 #include <memory>
+#include <stdio.h>
 
-#define WINDOW_WIDTH 640
-#define WINDOW_HEIGHT 480
+#define WINDOW_WIDTH 800
+#define WINDOW_HEIGHT 600
 
 SDL_Window *gWindow = nullptr;
 
@@ -34,15 +37,11 @@ int main(int argc, char **argv) {
   PPU->connectBus(EmuBus);
   PPU->connectCart(cart);
 
-  FILE *f = fopen("../rom/tests/nedlog.log", "wb");
-
-  // Connecting everything to the bus
-
   EmuBus->connectCartridge(cart);
   EmuBus->connectPpu(PPU);
   EmuBus->connectCpu(CPU);
   CPU->connectBus(EmuBus);
-  CPU->logFile = f;
+  /* CPU->logFile = f; */
   CPU->reset();
   printf("Program %s running with %d args\n", argv[0], argc);
   init();
@@ -51,6 +50,7 @@ int main(int argc, char **argv) {
   }
 
   bool quit = false;
+  std::map<uint16_t, std::string> disMap;
 
   SDL_Event e;
   while (!quit) {
@@ -59,14 +59,61 @@ int main(int argc, char **argv) {
       if (e.type == SDL_QUIT) {
         quit = true;
       }
+
+      if (e.type == SDL_KEYDOWN) {
+        switch (e.key.keysym.sym) {
+        case SDLK_s: {
+          // step a whole instruction
+          //
+
+          int clc = 0;
+          do {
+            clc++;
+            EmuBus->clock();
+
+          } while (!EmuBus->cpu->complete());
+          do {
+            clc++;
+            EmuBus->clock();
+
+          } while (EmuBus->cpu->complete());
+
+          break;
+        }
+        case SDLK_RETURN: {
+          // step one clock
+
+          EmuBus->clock();
+
+          break;
+        }
+        }
+      }
     }
 
-    EmuBus->clock();
     SDL_SetRenderDrawColor(gRenderer, 0x00, 0x00, 0xff, 0x00);
     SDL_RenderClear(gRenderer);
 
     // stuff happens
 
+    SDL_Color col = {0xff, 0xff, 0xff, 0xff};
+
+    SDL_Rect R = DrawCPUReg(EmuBus->cpu, gRenderer, global_font,
+                            WINDOW_WIDTH - 350, 10, col);
+    R.h += 40;
+    //
+    //
+    // Drawing disassembled instructions
+    disMap = EmuBus->cpu->disassemble(4);
+    col = {0x04, 0x09c, 0xf4, 0xff};
+    for (auto &d : disMap) {
+      std::string instr = toHex(d.first) + " " + d.second;
+      SDL_Rect r = DrawText(gRenderer, global_font, instr, WINDOW_WIDTH - 350,
+                            R.h + 10, col);
+      R.h += r.h;
+
+      col = {0xff, 0xff, 0xff, 0x00};
+    }
     SDL_RenderPresent(gRenderer);
   }
 
@@ -102,7 +149,7 @@ void init() {
     fprintf(stderr, "Couldn't Initalize TTF: %s \n", TTF_GetError());
     exit(1);
   }
-  global_font = TTF_OpenFont("../asset/font/ARCADECLASSIC.TTF", 24);
+  global_font = TTF_OpenFont("../asset/font/PixelEmulator-xq08.ttf", 17);
   if (!global_font) {
     fprintf(stderr, "Failed to Open Font: %s", TTF_GetError());
   } else {

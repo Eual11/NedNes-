@@ -47,11 +47,6 @@ void NedNes::NedBus::clock() {
   ppu->clock();
   if (SystemClock % 3 == 0) {
     cpu->clock();
-    auto stuff = cpu->disassemble(1);
-
-    for (auto &d : stuff) {
-      printf("$%X %s\n", d.first, d.second.c_str());
-    }
   }
   SystemClock++;
 }
