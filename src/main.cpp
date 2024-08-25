@@ -17,7 +17,7 @@
 #define WINDOW_HEIGHT 600
 bool bFreeRun = false;
 SDL_Window *gWindow = nullptr;
-
+int p_idx = 0;
 SDL_Renderer *gRenderer = nullptr;
 
 TTF_Font *global_font = nullptr;
@@ -98,17 +98,20 @@ int main(int argc, char **argv) {
           bFreeRun = !bFreeRun;
           break;
         }
+        case SDLK_p: {
+          // shifting pallete
+          p_idx++;
+          p_idx %= 8;
+          break;
+        }
         }
       }
     }
 
-    if (bFreeRun)
-    {
-do 
-{
+    if (bFreeRun) {
+      do {
         EmuBus->clock();
-      }
-      while(        !EmuBus->ppu->isFrameComplete());
+      } while (!EmuBus->ppu->isFrameComplete());
     }
     SDL_SetRenderDrawColor(gRenderer, 0x00, 0x00, 0xff, 0x00);
     SDL_RenderClear(gRenderer);
@@ -135,9 +138,9 @@ do
     }
     SDL_RenderCopy(gRenderer, EmuBus->ppu->getScreenTexture(), nullptr,
                    &scrArea);
-    SDL_RenderCopy(gRenderer, EmuBus->ppu->getPatternTable(0, 0), nullptr,
+    SDL_RenderCopy(gRenderer, EmuBus->ppu->getPatternTable(0, p_idx), nullptr,
                    &patternTableArea1);
-    SDL_RenderCopy(gRenderer, EmuBus->ppu->getPatternTable(1, 0), nullptr,
+    SDL_RenderCopy(gRenderer, EmuBus->ppu->getPatternTable(1, p_idx), nullptr,
                    &patternTableArea2);
 
     DisplayNESColorPalettes(gRenderer, EmuBus->ppu, 400, 400, 6, 10);

@@ -102,6 +102,7 @@ bool NedCartrdige::cpuWrite(uint16_t addr, uint8_t data) {
 bool NedCartrdige::ppuRead(uint16_t addr, uint8_t &data) {
   uint32_t mapped_addr;
   if (mMapper->ppuMapReadAddress(addr, mapped_addr)) {
+
     data = CHRMemory[mapped_addr];
     return true;
   }

@@ -27,7 +27,8 @@ public:
   union {
 
     struct {
-      uint8_t nametable_select : 2;
+      uint8_t nametable_x : 1;
+      uint8_t nametable_y : 1;
       uint8_t increment_mode : 1;
       uint8_t sprite_select : 1;
       uint8_t bg_select : 1;
@@ -55,7 +56,7 @@ public:
   uint8_t OAMADDR;   // oam r/w addresssA
   uint8_t OAMDATA;   // OAM R/W DATA
   uint8_t PPUSCROLL; // scroll register
-  uint8_t PPUADDR;   // ppu address
+  uint16_t PPUADDR;  // ppu address
   uint8_t PPUDATA;   // data register
   uint8_t OAMDMA;
   // Layout of PPU status register

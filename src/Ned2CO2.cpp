@@ -1,6 +1,7 @@
-#include <cstdint>
+#include <cstdio>
 #define _CRT_SECURE_NO_WARNINGS
 #include "../include/Ned2CO2.h"
+#include <cstdint>
 #include <memory>
 // printf("PPUADDR: %04X, addr_latch: %d, PPUSTATUS: %02X\n", PPUADDR,
 // addr_latch, PPUSTATUS.value);
@@ -30,17 +31,21 @@ uint8_t NedNes::Ned2C02::cpuRead(uint16_t addr) {
   switch (addr & 0xF) {
   case 0x00: {
     // PPU Control Register
+
+    data = PPUCTRL.value;
     break;
   }
 
   case 0x01: {
     // PPU Mask Registers
+    data = PPUMASK.value;
     break;
   }
 
   case 0x02: {
     // PPU Status Register
-    data = PPUSTATUS.value;
+    PPUSTATUS.bits.vblank = 1;
+    data = (PPUSTATUS.value & 0xE0) | (buffered_data & 0x1F);
 
     // reseting vblank
     PPUSTATUS.bits.vblank = 0;
@@ -72,11 +77,10 @@ uint8_t NedNes::Ned2C02::cpuRead(uint16_t addr) {
     data = buffered_data;
     buffered_data = ppuRead(PPUADDR);
 
-      if(addr >= 0x3F00)
-      {
-        //palette table doesn't rely on buffering
-        data = buffered_data;
-      }
+    if (addr >= 0x3F00) {
+      // palette table doesn't rely on buffering
+      data = buffered_data;
+    }
     if (PPUCTRL.bits.increment_mode == 0) {
       PPUADDR += 1;
     } else {
@@ -93,10 +97,12 @@ void NedNes::Ned2C02::cpuWrite(uint16_t addr, uint8_t data) {
   case 0x00: {
     // PPU Control Register
     break;
+    PPUCTRL.value = data;
   }
 
   case 0x01: {
     // PPU Mask Registers
+    PPUMASK.value = data;
     break;
   }
 
@@ -157,8 +163,9 @@ uint8_t NedNes::Ned2C02::ppuRead(uint16_t addr) {
     // read from pattern table
 
     data = patternTable[(addr & 0x1000) >> 12][addr & 0xFFF];
-  } else if (addr >= 0x2000 && addr <= 0x2FFF) {
+  } else if (addr >= 0x2000 && addr <= 0x2EFF) {
     // nametable stuff
+    // TODO: implement writing to nametable
   } else if (addr >= 0x3000 && addr <= 0x3FFF) {
     addr &= 0x1F;
     if (addr == 0x0010)
@@ -178,6 +185,28 @@ uint8_t NedNes::Ned2C02::ppuRead(uint16_t addr) {
 }
 void NedNes::Ned2C02::ppuWrite(uint16_t addr, uint8_t data) {
 
+  if (cart->ppuWrite(addr, data)) {
+    // cartridge having veto power
+
+  } else if (addr >= 0x0000 && addr <= 0x1FFF) {
+    // write to pattern table
+    patternTable[(addr & 0x1000) >> 12][addr & 0xFFF] = data;
+  } else if (addr >= 0x2000 && addr <= 0x2EFF) {
+    // TODO: implement writing to nametable
+  } else if (addr >= 0x3000 && addr <= 0x3FFF) {
+
+    addr &= 0x1F;
+    // hardincoding the mirroring
+    if (addr == 0x0010)
+      addr = 0x000;
+    if (addr == 0x0014)
+      addr = 0x0004;
+    if (addr == 0x0018)
+      addr = 0x0008;
+    if (addr == 0x001C)
+      addr = 0x000C;
+    paletteTable[addr] = data;
+  }
   // do something idk yet lmao
 }
 
@@ -220,7 +249,6 @@ SDL_Texture *NedNes::Ned2C02::getPatternTable(uint8_t i, uint8_t palette) {
   SDL_Texture *tex = patternTableTexture[i];
 
   SDL_LockTexture(tex, nullptr, (void **)(&pixels), &pitch);
-  int pixels_wr = 0;
   for (int yTile = 0; yTile < 16; yTile++) {
     for (int xTile = 0; xTile < 16; xTile++) {
 
@@ -238,7 +266,8 @@ SDL_Texture *NedNes::Ned2C02::getPatternTable(uint8_t i, uint8_t palette) {
 
           int yPos = yTile * 8 + row;
           int xPos = xTile * 8 + (7 - col);
-          SET_PIXEL(pixels, xPos, yPos, pitch, getColorFromPalette(palette, i));
+          SET_PIXEL(pixels, xPos, yPos, pitch,
+                    getColorFromPalette(palette, pixel));
         }
       }
     }
