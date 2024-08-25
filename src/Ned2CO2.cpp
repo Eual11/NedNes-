@@ -1,16 +1,13 @@
-#include <SDL2/SDL_pixels.h>
-#include <SDL2/SDL_render.h>
-#include <SDL2/SDL_stdinc.h>
 #include <cstdint>
 #define _CRT_SECURE_NO_WARNINGS
 #include "../include/Ned2CO2.h"
 #include <memory>
-
+// printf("PPUADDR: %04X, addr_latch: %d, PPUSTATUS: %02X\n", PPUADDR,
+// addr_latch, PPUSTATUS.value);
 NedNes::Ned2C02::Ned2C02(SDL_Renderer *gRenderer) {
 
   cycles = 0;
   scanlines = 0;
-
   screenTexture = SDL_CreateTexture(gRenderer, SDL_PIXELFORMAT_RGBA8888,
                                     SDL_TEXTUREACCESS_STREAMING, 256, 240);
   patternTableTexture[0] =
@@ -30,7 +27,7 @@ NedNes::Ned2C02::~Ned2C02() {
 
 uint8_t NedNes::Ned2C02::cpuRead(uint16_t addr) {
   uint8_t data = 0x00;
-  switch (addr) {
+  switch (addr & 0xF) {
   case 0x00: {
     // PPU Control Register
     break;
@@ -43,6 +40,12 @@ uint8_t NedNes::Ned2C02::cpuRead(uint16_t addr) {
 
   case 0x02: {
     // PPU Status Register
+    data = PPUSTATUS.value;
+
+    // reseting vblank
+    PPUSTATUS.bits.vblank = 0;
+    // reseting PPUADDR latch
+    addr_latch = false;
     break;
   }
 
@@ -56,6 +59,7 @@ uint8_t NedNes::Ned2C02::cpuRead(uint16_t addr) {
   }
   case 0x05: {
     // PPU Scroll register
+
     break;
   }
   case 0x06: {
@@ -64,12 +68,28 @@ uint8_t NedNes::Ned2C02::cpuRead(uint16_t addr) {
   }
   case 0x07: {
     // PPU Data Register
+
+    data = buffered_data;
+    buffered_data = ppuRead(PPUADDR);
+
+      if(addr >= 0x3F00)
+      {
+        //palette table doesn't rely on buffering
+        data = buffered_data;
+      }
+    if (PPUCTRL.bits.increment_mode == 0) {
+      PPUADDR += 1;
+    } else {
+      PPUADDR += 32;
+    }
+    PPUADDR &= 0x3FFF; // mirroring PPUADDR
+    break;
   }
   }
-  return 0xFF;
+  return data;
 }
 void NedNes::Ned2C02::cpuWrite(uint16_t addr, uint8_t data) {
-  switch (addr) {
+  switch (addr & 0xF) {
   case 0x00: {
     // PPU Control Register
     break;
@@ -99,10 +119,31 @@ void NedNes::Ned2C02::cpuWrite(uint16_t addr, uint8_t data) {
   }
   case 0x06: {
     // PPU Address Register
+    if (!addr_latch) {
+      // reading hi byte
+      PPUADDR = data << 8;
+    } else {
+      PPUADDR |= data;
+    }
+    addr_latch = !addr_latch; // flipping address latch
     break;
   }
   case 0x07: {
     // PPU Data Register
+
+    // writing data to the address in ppu addr
+    ppuWrite(PPUADDR, data);
+
+    // increaming ppu addr based on
+    if (PPUCTRL.bits.increment_mode == 0) {
+      // going across
+      PPUADDR += 1;
+    } else {
+      // going downward
+      PPUADDR += 32;
+    }
+    PPUADDR &= 0x3FFF; // mirroring PPUADDR
+    break;
   }
   }
 }
@@ -148,19 +189,29 @@ void NedNes::Ned2C02::connectCart(std::shared_ptr<NedCartrdige> _cart) {
 void NedNes::Ned2C02::clock() {
 
   // advancing the clock count
-  clockCount = 0;
 
   cycles++;
-
+  frameComplete = false;
   if (cycles >= 341) {
     cycles = 0;
     scanlines++;
   }
-  if (scanlines >= 261) {
-    scanlines = -1;
-    frameComplete = true;
+
+  if (scanlines >= 0 && scanlines <= 239) {
+    // visible scan lines
+  } else if (scanlines >= 240 && scanlines <= 260) {
+    if (cycles == 1) {
+      PPUSTATUS.bits.vblank = 0x1;
+    }
+  } else if (scanlines >= 261) {
+    if (cycles == 1) {
+      scanlines = -1;
+      frameComplete = true;
+      PPUSTATUS.bits.vblank = 0x00;
+    }
   }
 }
+
 SDL_Texture *NedNes::Ned2C02::getScreenTexture() { return screenTexture; }
 SDL_Texture *NedNes::Ned2C02::getPatternTable(uint8_t i, uint8_t palette) {
 

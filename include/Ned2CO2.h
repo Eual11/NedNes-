@@ -23,6 +23,55 @@ public:
   // these methods are called from the bus handle read and write signals from
   // cpu
 
+  // represents the layout of Control Register
+  union {
+
+    struct {
+      uint8_t nametable_select : 2;
+      uint8_t increment_mode : 1;
+      uint8_t sprite_select : 1;
+      uint8_t bg_select : 1;
+      uint8_t sprite_height : 1;
+      uint8_t master_slave : 1;
+      uint8_t nmi_enable : 1;
+    } bits;
+    uint8_t value;
+  } PPUCTRL;
+  // Layout of PPU Mask Register or CTRL2
+
+  union {
+
+    struct {
+      uint8_t greyscale : 1;
+      uint8_t bg_left_enable : 1;
+      uint8_t sprite_left_enable : 1;
+      uint8_t bg_enable : 1;
+      uint8_t sprite_enable : 1;
+      uint8_t color_emphasis : 3;
+    } bits;
+    uint8_t value;
+  } PPUMASK;
+
+  uint8_t OAMADDR;   // oam r/w addresssA
+  uint8_t OAMDATA;   // OAM R/W DATA
+  uint8_t PPUSCROLL; // scroll register
+  uint8_t PPUADDR;   // ppu address
+  uint8_t PPUDATA;   // data register
+  uint8_t OAMDMA;
+  // Layout of PPU status register
+  uint8_t buffered_data = 0x00;
+  bool addr_latch =
+      0; // the tracks if the PPUAddr is reading lo or hi byte on the next write
+  union {
+    struct {
+      uint8_t unused : 5;
+      uint8_t sprite_overflow : 1;
+      uint8_t sprite_hit : 1;
+      uint8_t vblank : 1;
+    } bits;
+    uint8_t value;
+  } PPUSTATUS;
+
   Ned2C02(SDL_Renderer *gRenderer);
   ~Ned2C02();
   uint8_t cpuRead(uint16_t addr);
@@ -49,10 +98,11 @@ public:
   SDL_Texture *getPatternTable(uint8_t i, uint8_t palette);
 
   Uint32 getColorFromPalette(uint8_t palette, uint8_t idx);
+  bool isFrameComplete() { return frameComplete; };
 
 private:
-  unsigned int cycles = 0;
-  unsigned int scanlines = 0;
+  int cycles = 0;
+  int scanlines = 0;
 
   unsigned int clockCount = 0;
   bool frameComplete = false;
