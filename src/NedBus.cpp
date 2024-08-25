@@ -1,8 +1,7 @@
 #include "../include/NedBus.h"
 #define _CRT_SECURE_NO_WARNINGS
+#include <cstdint>
 #include <memory>
-#include <stdint.h>
-#include <stdio.h>
 
 // NedBus Constructor, currently only just filling the ram with 0s
 NedNes::NedBus::NedBus() { std::fill(std::begin(ram), std::end(ram), 0x00); }
@@ -18,7 +17,7 @@ uint8_t NedNes::NedBus::cpuRead(uint16_t addr) {
     // mirroring the cpu read
     data = ram[addr & 0x7FF];
   } else if (addr >= 0x2000 && addr <= 0x3FFF) {
-    data = ppu->cpuRead(addr & 0x2000);
+    data = ppu->cpuRead(addr & 0x2007);
   }
 
   return data;
@@ -31,7 +30,7 @@ void NedNes::NedBus::cpuWrite(uint16_t addr, uint8_t val) {
     // mirroring the cpu write
     ram[addr & 0x7FF] = val;
   } else if (addr >= 0x2000 && addr <= 0x3FFF) {
-    ppu->cpuWrite(addr & 0x2000, val);
+    ppu->cpuWrite(addr & 0x2007, val);
   }
 }
 

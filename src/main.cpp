@@ -15,7 +15,7 @@
 
 #define WINDOW_WIDTH 800
 #define WINDOW_HEIGHT 600
-
+bool bFreeRun = false;
 SDL_Window *gWindow = nullptr;
 
 SDL_Renderer *gRenderer = nullptr;
@@ -35,8 +35,8 @@ void close_program();
 int main(int argc, char **argv) {
 
   init();
-  auto cart = std::make_shared<NedNes::NedCartrdige>(
-      "../rom/games/Super Mario Bros (E).nes");
+  auto cart =
+      std::make_shared<NedNes::NedCartrdige>("../rom/tests/nestest.nes");
 
   // setting up nednes bus
   auto EmuBus = std::make_shared<NedNes::NedBus>();
@@ -94,10 +94,22 @@ int main(int argc, char **argv) {
 
           break;
         }
+        case SDLK_f: {
+          bFreeRun = !bFreeRun;
+          break;
+        }
         }
       }
     }
 
+    if (bFreeRun)
+    {
+do 
+{
+        EmuBus->clock();
+      }
+      while(        !EmuBus->ppu->isFrameComplete());
+    }
     SDL_SetRenderDrawColor(gRenderer, 0x00, 0x00, 0xff, 0x00);
     SDL_RenderClear(gRenderer);
 
@@ -152,8 +164,7 @@ void init() {
     exit(1);
   }
 
-  gRenderer = SDL_CreateRenderer(
-      gWindow, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+  gRenderer = SDL_CreateRenderer(gWindow, -1, SDL_RENDERER_ACCELERATED);
 
   if (!gRenderer) {
     fprintf(stderr, "Couldn't Create Renderer: %s\n", SDL_GetError());
