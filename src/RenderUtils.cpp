@@ -131,9 +131,12 @@ void DisplayNESColorPalettes(SDL_Renderer *renderer,
   for (uint8_t palette = 0; palette < 8; palette++) {
     for (uint8_t idx = 0; idx < 4; idx++) {
       Uint32 color = ppu->getColorFromPalette(palette, idx);
-      int x = startX + palette * (4 * swatchSize + spacing) + idx * swatchSize;
+      int x =
+          startX + palette % 4 * (4 * swatchSize + spacing) + idx * swatchSize;
       int y = startY;
       DrawRect(renderer, x, y, swatchSize, swatchSize, color);
     }
+    if (palette == 3)
+      startY += swatchSize;
   }
 }

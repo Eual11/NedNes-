@@ -931,8 +931,8 @@ std::map<uint16_t, std::string> Ned6502::disassemble(uint16_t count) {
         r_addr |= 0xFF00;
       }
       int16_t new_addr = (int16_t)opcode_addr + r_addr;
-      sprintf(buffer, "%X %X   %s %X", opcode, r_addr, mnemonic.c_str(),
-              (uint16_t)new_addr);
+      sprintf(buffer, "%X %d   %s %X", opcode, r_addr, mnemonic.c_str(),
+              (uint16_t)new_addr + 2);
     }
 
     disassembled[opcode_addr] = std::string(buffer);

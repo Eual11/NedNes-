@@ -37,8 +37,9 @@ NedCartrdige::NedCartrdige(std::string filename) {
     PGRMemory.resize(hd.nPGR * 16 * 1024);
     CHRMemory.resize(hd.nCHR * 8 * 1024);
 
-    // TODO: add enumrates for mirroring
-    //
+    // TODO: support for other mirroring types such as four screen
+    mirrorType = hd.ctrl1 & 0x01 ? VERTICAL : HORIZONTAL;
+
     if (hd.format == 0x1A) {
       // INES FORMAT
       mapperID = (hd.ctrl1 >> 4) | (hd.ctrl2 & 0xF0);

@@ -36,7 +36,7 @@ int main(int argc, char **argv) {
 
   init();
   auto cart =
-      std::make_shared<NedNes::NedCartrdige>("../rom/tests/nestest.nes");
+      std::make_shared<NedNes::NedCartrdige>("../rom/games/donkey kong.nes");
 
   // setting up nednes bus
   auto EmuBus = std::make_shared<NedNes::NedBus>();
@@ -84,7 +84,6 @@ int main(int argc, char **argv) {
             EmuBus->clock();
 
           } while (EmuBus->cpu->complete());
-
           break;
         }
         case SDLK_RETURN: {
@@ -109,9 +108,15 @@ int main(int argc, char **argv) {
     }
 
     if (bFreeRun) {
-      do {
+      while (!EmuBus->ppu->isFrameComplete()) {
         EmuBus->clock();
-      } while (!EmuBus->ppu->isFrameComplete());
+      }
+      while (!EmuBus->cpu->complete()) {
+        EmuBus->clock();
+      }
+      while (EmuBus->cpu->complete()) {
+        EmuBus->clock();
+      }
     }
     SDL_SetRenderDrawColor(gRenderer, 0x00, 0x00, 0xff, 0x00);
     SDL_RenderClear(gRenderer);
@@ -143,7 +148,7 @@ int main(int argc, char **argv) {
     SDL_RenderCopy(gRenderer, EmuBus->ppu->getPatternTable(1, p_idx), nullptr,
                    &patternTableArea2);
 
-    DisplayNESColorPalettes(gRenderer, EmuBus->ppu, 400, 400, 6, 10);
+    DisplayNESColorPalettes(gRenderer, EmuBus->ppu, 400, 400, 16, 10);
     SDL_RenderPresent(gRenderer);
   }
 

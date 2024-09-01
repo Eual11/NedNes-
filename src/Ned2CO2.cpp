@@ -75,18 +75,17 @@ uint8_t NedNes::Ned2C02::cpuRead(uint16_t addr) {
     // PPU Data Register
 
     data = buffered_data;
-    buffered_data = ppuRead(PPUADDR);
+    buffered_data = ppuRead(v_reg.reg);
 
     if (addr >= 0x3F00) {
       // palette table doesn't rely on buffering
       data = buffered_data;
     }
     if (PPUCTRL.bits.increment_mode == 0) {
-      PPUADDR += 1;
+      v_reg.reg += 1;
     } else {
-      PPUADDR += 32;
+      v_reg.reg += 32;
     }
-    PPUADDR &= 0x3FFF; // mirroring PPUADDR
     break;
   }
   }
@@ -96,8 +95,10 @@ void NedNes::Ned2C02::cpuWrite(uint16_t addr, uint8_t data) {
   switch (addr & 0xF) {
   case 0x00: {
     // PPU Control Register
-    break;
     PPUCTRL.value = data;
+    t_reg.bits.nametable_x = PPUCTRL.bits.nametable_x;
+    t_reg.bits.nametable_y = PPUCTRL.bits.nametable_y;
+    break;
   }
 
   case 0x01: {
@@ -121,15 +122,28 @@ void NedNes::Ned2C02::cpuWrite(uint16_t addr, uint8_t data) {
   }
   case 0x05: {
     // PPU Scroll register
+
+    if (!addr_latch) {
+      // reading fine x scroll value
+      fine_x = data & 0x07;
+      t_reg.bits.coarse_x = data >> 3;
+    }
+    else {
+        t_reg.bits.fine_y = data &0x07;
+        t_reg.bits.coarse_y = data >>3;
+      }
+    // toggling w register (address latch)
+    addr_latch = !addr_latch;
     break;
   }
   case 0x06: {
     // PPU Address Register
     if (!addr_latch) {
       // reading hi byte
-      PPUADDR = data << 8;
+      t_reg.reg = (t_reg.reg & 0x00FF) | (data << 8);
     } else {
-      PPUADDR |= data;
+      t_reg.reg = (t_reg.reg & 0xFF00) | data;
+      v_reg.reg = t_reg.reg;
     }
     addr_latch = !addr_latch; // flipping address latch
     break;
@@ -138,17 +152,17 @@ void NedNes::Ned2C02::cpuWrite(uint16_t addr, uint8_t data) {
     // PPU Data Register
 
     // writing data to the address in ppu addr
-    ppuWrite(PPUADDR, data);
+    ppuWrite(v_reg.reg, data);
 
     // increaming ppu addr based on
     if (PPUCTRL.bits.increment_mode == 0) {
       // going across
-      PPUADDR += 1;
+      v_reg.reg += 1;
     } else {
       // going downward
-      PPUADDR += 32;
+      v_reg.reg += 32;
     }
-    PPUADDR &= 0x3FFF; // mirroring PPUADDR
+    /* PPUADDR &= 0x3FFF; // mirroring PPUADDR */
     break;
   }
   }
@@ -163,9 +177,35 @@ uint8_t NedNes::Ned2C02::ppuRead(uint16_t addr) {
     // read from pattern table
 
     data = patternTable[(addr & 0x1000) >> 12][addr & 0xFFF];
-  } else if (addr >= 0x2000 && addr <= 0x2EFF) {
+  } else if (addr >= 0x2000 && addr <= 0x2FFF) {
     // nametable stuff
     // TODO: implement writing to nametable
+
+    addr = addr & 0xFFF;
+
+    switch (cart->mirrorType) {
+    case HORIZONTAL: {
+      if (addr <= 0x7FF) {
+        // mapped to the nametable 1
+        data = nameTable[0][addr & 0x3FF];
+      } else {
+        data = nameTable[1][addr & 0x3FF];
+      }
+
+      break;
+    }
+    case VERTICAL: {
+
+      if ((addr >= 0x00 && addr <= 0x3FF) || addr >= 0x800 && addr <= 0xBFF) {
+        data = nameTable[0][addr & 0x3FF];
+      } else if ((addr >= 0x400 && addr <= 0x7FF) ||
+                 (addr >= 0xC00 && addr <= 0xFFF)) {
+        data = nameTable[1][addr & 0x3FF];
+      }
+
+      break;
+    }
+    }
   } else if (addr >= 0x3000 && addr <= 0x3FFF) {
     addr &= 0x1F;
     if (addr == 0x0010)
@@ -191,8 +231,34 @@ void NedNes::Ned2C02::ppuWrite(uint16_t addr, uint8_t data) {
   } else if (addr >= 0x0000 && addr <= 0x1FFF) {
     // write to pattern table
     patternTable[(addr & 0x1000) >> 12][addr & 0xFFF] = data;
-  } else if (addr >= 0x2000 && addr <= 0x2EFF) {
+  } else if (addr >= 0x2000 && addr <= 0x2FFF) {
     // TODO: implement writing to nametable
+
+    addr = addr & 0xFFF;
+
+    switch (cart->mirrorType) {
+    case HORIZONTAL: {
+      if (addr <= 0x7FF) {
+        // mapped to the nametable 1
+        nameTable[0][addr & 0x3FF] = data;
+      } else {
+        nameTable[1][addr & 0x3FF] = data;
+      }
+
+      break;
+    }
+    case VERTICAL: {
+
+      if ((addr >= 0x00 && addr <= 0x3FF) || addr >= 0x800 && addr <= 0xBFF) {
+        nameTable[0][addr & 0x3FF] = data;
+      } else if ((addr >= 0x400 && addr <= 0x7FF) ||
+                 (addr >= 0xC00 && addr <= 0xFFF)) {
+        nameTable[1][addr & 0x3FF] = data;
+      }
+
+      break;
+    }
+    }
   } else if (addr >= 0x3000 && addr <= 0x3FFF) {
 
     addr &= 0x1F;
@@ -205,6 +271,7 @@ void NedNes::Ned2C02::ppuWrite(uint16_t addr, uint8_t data) {
       addr = 0x0008;
     if (addr == 0x001C)
       addr = 0x000C;
+    printf("writing to pallete at address %X value %X \n", addr, data);
     paletteTable[addr] = data;
   }
   // do something idk yet lmao
@@ -229,16 +296,23 @@ void NedNes::Ned2C02::clock() {
   if (scanlines >= 0 && scanlines <= 239) {
     // visible scan lines
   } else if (scanlines >= 240 && scanlines <= 260) {
-    if (cycles == 1) {
+    if (cycles == 1 && scanlines == 241) {
       PPUSTATUS.bits.vblank = 0x1;
+      if (PPUCTRL.bits.nmi_enable) {
+        nmi = true;
+        /* printf("nmi_enabled\n"); */
+      }
     }
   } else if (scanlines >= 261) {
     if (cycles == 1) {
       scanlines = -1;
       frameComplete = true;
       PPUSTATUS.bits.vblank = 0x00;
+      PPUSTATUS.bits.sprite_overflow = 0x00;
+      PPUSTATUS.bits.sprite_hit = 0x00;
     }
   }
+  /* printf("%d, %d\n", cycles, scanlines); */
 }
 
 SDL_Texture *NedNes::Ned2C02::getScreenTexture() { return screenTexture; }

@@ -47,5 +47,11 @@ void NedNes::NedBus::clock() {
   if (SystemClock % 3 == 0) {
     cpu->clock();
   }
+  if (ppu->nmi) {
+    /* printf("Non Maskable intrupt\n"); */
+    ppu->PPUSTATUS.bits.vblank = 0x00; // clearing vblank
+    ppu->nmi = false;
+    cpu->nmi();
+  }
   SystemClock++;
 }
