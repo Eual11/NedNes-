@@ -8,14 +8,13 @@
 #include <stdint.h>
 #include <vector>
 
+enum Mirror {
+
+  HORIZONTAL,
+  VERTICAL
+};
 namespace NedNes {
 class NedCartrdige {
-
-  enum Mirror {
-
-    HORIZONTAL,
-    VERTICAL
-  };
 
 private:
   uint8_t nPGRBanks;
@@ -30,7 +29,7 @@ private:
 public:
   bool imageValid();
   NedCartrdige(std::string filename);
-  Mirror mirror;
+  Mirror mirrorType;
 
   // read and writes from CPU
   bool cpuRead(uint16_t addr, uint8_t &data);

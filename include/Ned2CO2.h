@@ -56,7 +56,7 @@ public:
   uint8_t OAMADDR;   // oam r/w addresssA
   uint8_t OAMDATA;   // OAM R/W DATA
   uint8_t PPUSCROLL; // scroll register
-  uint16_t PPUADDR;  // ppu address
+  /* uint16_t PPUADDR;  // ppu address */
   uint8_t PPUDATA;   // data register
   uint8_t OAMDMA;
   // Layout of PPU status register
@@ -76,6 +76,7 @@ public:
   Ned2C02(SDL_Renderer *gRenderer);
   ~Ned2C02();
   uint8_t cpuRead(uint16_t addr);
+  bool nmi = false;
   void cpuWrite(uint16_t addr, uint8_t data);
 
   // PPU read and writes
@@ -83,6 +84,22 @@ public:
   uint8_t ppuRead(uint16_t addr);
   void ppuWrite(uint16_t addr, uint8_t data);
 
+  union loopy_reg {
+    struct {
+
+      uint8_t coarse_x : 5;
+      uint8_t coarse_y : 5;
+      uint8_t nametable_x : 1;
+      uint8_t nametable_y : 1;
+      uint8_t fine_y : 3;
+      uint8_t unused : 1;
+    } bits;
+
+    uint16_t reg;
+  };
+  loopy_reg v_reg;
+  loopy_reg t_reg;
+  uint8_t fine_x;
   // ppu clock
   void clock();
 
