@@ -1,0 +1,2 @@
+- when loading nestest, the palette isn't correct!
+- there are alot of problems with the rendering, completely not working

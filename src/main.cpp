@@ -35,8 +35,8 @@ void close_program();
 int main(int argc, char **argv) {
 
   init();
-  auto cart =
-      std::make_shared<NedNes::NedCartrdige>("../rom/games/donkey kong.nes");
+  auto cart = std::make_shared<NedNes::NedCartrdige>(
+      "../rom/games/Super Mario Bros (E).nes");
 
   // setting up nednes bus
   auto EmuBus = std::make_shared<NedNes::NedBus>();

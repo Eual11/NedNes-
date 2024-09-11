@@ -11,7 +11,6 @@
 
 #define SET_PIXEL(pixel_ptr, x, y, pitch, color)                               \
   ((Uint32 *)(pixel_ptr))[(y * ((pitch) / 4)) + (x)] = (color)
-
 #define COLOR_TO_UINT32(color)                                                 \
   (((color).r << 24) | ((color).g << 16) | ((color).b << 8) | (color).a)
 namespace NedNes {
@@ -57,10 +56,11 @@ public:
   uint8_t OAMDATA;   // OAM R/W DATA
   uint8_t PPUSCROLL; // scroll register
   /* uint16_t PPUADDR;  // ppu address */
-  uint8_t PPUDATA;   // data register
+  uint8_t PPUDATA; // data register
   uint8_t OAMDMA;
   // Layout of PPU status register
   uint8_t buffered_data = 0x00;
+
   bool addr_latch =
       0; // the tracks if the PPUAddr is reading lo or hi byte on the next write
   union {
@@ -72,6 +72,18 @@ public:
     } bits;
     uint8_t value;
   } PPUSTATUS;
+
+  uint8_t next_bg_tile_id = 0x00;
+  uint8_t next_bg_attrib = 0x00;
+  uint8_t next_bg_tile_lsb = 0x00;
+  uint8_t next_bg_tile_msb = 0x00;
+
+  // shift registers
+  //
+  uint16_t bg_tile_shift_reg_lo = 0x0000;
+  uint16_t bg_tile_shift_reg_hi = 0x0000;
+  uint16_t bg_attr_shift_reg_lo = 0x0000;
+  uint16_t bg_attr_shift_reg_hi = 0x0000;
 
   Ned2C02(SDL_Renderer *gRenderer);
   ~Ned2C02();
@@ -134,6 +146,7 @@ private:
   SDL_Renderer *renderer = nullptr;
   SDL_Texture *patternTableTexture[2];
   SDL_Texture *nameTableTexture[2];
+  SDL_Surface *scrSurface = nullptr;
   SDL_Color paletteColor[0x40] = {
       {0x7C, 0x7C, 0x7C, 0xFF}, {0x00, 0x00, 0xFC, 0xFF},
       {0x00, 0x00, 0xBC, 0xFF}, {0x44, 0x28, 0xBC, 0xFF},
