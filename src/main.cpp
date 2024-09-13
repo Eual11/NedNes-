@@ -9,12 +9,11 @@
 #include <SDL2/SDL_render.h>
 #include <SDL2/SDL_ttf.h>
 #include <SDL2/SDL_video.h>
-#include <corecrt_wstdio.h>
 #include <memory>
 #include <stdio.h>
 
-#define WINDOW_WIDTH 800
-#define WINDOW_HEIGHT 600
+#define WINDOW_WIDTH 1280
+#define WINDOW_HEIGHT 720
 bool bFreeRun = false;
 SDL_Window *gWindow = nullptr;
 int p_idx = 0;
@@ -24,9 +23,12 @@ TTF_Font *global_font = nullptr;
 
 // Screen and pattern table area
 //
+//
+
 SDL_Rect scrArea = {0, 0, 256, 240};
-SDL_Rect patternTableArea1 = {0, 400, 128, 128};
-SDL_Rect patternTableArea2 = {256, 400, 128, 128};
+SDL_Rect patternTableArea1 = {0, (WINDOW_HEIGHT - (128 + 30)), 128, 128};
+SDL_Rect patternTableArea2 = {256, (WINDOW_HEIGHT - (128 + 30)), 128, 128};
+SDL_Rect nametableArea = {0, 300, 256, 240};
 
 void init();
 
@@ -35,8 +37,8 @@ void close_program();
 int main(int argc, char **argv) {
 
   init();
-  auto cart = std::make_shared<NedNes::NedCartrdige>(
-      "../rom/games/Super Mario Bros (E).nes");
+  auto cart =
+      std::make_shared<NedNes::NedCartrdige>("../rom/tests/nestest.nes");
 
   // setting up nednes bus
   auto EmuBus = std::make_shared<NedNes::NedBus>();
@@ -148,7 +150,20 @@ int main(int argc, char **argv) {
     SDL_RenderCopy(gRenderer, EmuBus->ppu->getPatternTable(1, p_idx), nullptr,
                    &patternTableArea2);
 
-    DisplayNESColorPalettes(gRenderer, EmuBus->ppu, 400, 400, 16, 10);
+    for (int i = 0; i < 4; i++) {
+
+      int offset = 0;
+      if (i > 0)
+        offset = 2 * i;
+      SDL_Rect area = {nametableArea.x + nametableArea.w * i + offset,
+                       nametableArea.y, nametableArea.w, nametableArea.h};
+      SDL_RenderCopy(gRenderer, EmuBus->ppu->getNameTable(i, p_idx), nullptr,
+                     &area);
+    }
+
+    DisplayNESColorPalettes(gRenderer, EmuBus->ppu,
+                            patternTableArea1.x + 2 * patternTableArea1.w + 200,
+                            patternTableArea1.y, 16, 10);
     SDL_RenderPresent(gRenderer);
   }
 
@@ -191,9 +206,7 @@ void init() {
   }
 }
 
-void close_program()
-
-{
+void close_program() {
 
   SDL_DestroyRenderer(gRenderer);
   gRenderer = nullptr;

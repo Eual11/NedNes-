@@ -1,3 +1,5 @@
+#include <SDL2/SDL_rect.h>
+#include <SDL2/SDL_render.h>
 #include <SDL2/SDL_surface.h>
 #include <cstdio>
 #define _CRT_SECURE_NO_WARNINGS
@@ -21,6 +23,11 @@ NedNes::Ned2C02::Ned2C02(SDL_Renderer *gRenderer) {
   scrSurface = SDL_CreateRGBSurface(0, 256, 240, 32, 0xFF000000, 0X00FF0000,
                                     0X0000FF00, 0x000000FF);
 
+  for (size_t i = 0; i < 4; i++) {
+    nameTableTexture[i] =
+        SDL_CreateTexture(gRenderer, SDL_PIXELFORMAT_RGBA8888,
+                          SDL_TEXTUREACCESS_STREAMING, 256, 240);
+  }
   if (!scrSurface) {
     printf("Couldn't Create Screen surface\n");
   } else {
@@ -322,14 +329,15 @@ void NedNes::Ned2C02::clock() {
     }
   };
   auto TransferX = [&]() {
-    if (PPUMASK.bits.bg_enable | PPUMASK.bits.sprite_enable) {
+    // NOTE: transfering X causes a messed up pallete
+    if (PPUMASK.bits.bg_enable || PPUMASK.bits.sprite_enable) {
       v_reg.bits.coarse_x = t_reg.bits.coarse_x;
       v_reg.bits.nametable_x = t_reg.bits.nametable_x;
     }
   };
 
   auto TransferY = [&]() {
-    if (PPUMASK.bits.bg_enable | PPUMASK.bits.sprite_enable) {
+    if (PPUMASK.bits.bg_enable || PPUMASK.bits.sprite_enable) {
       v_reg.bits.coarse_y = t_reg.bits.coarse_y;
       v_reg.bits.fine_y = t_reg.bits.fine_y;
       v_reg.bits.nametable_y = t_reg.bits.nametable_y;
@@ -337,21 +345,27 @@ void NedNes::Ned2C02::clock() {
   };
 
   auto UpdateShiftRegisters = [&]() {
-    bg_tile_shift_reg_lo <<= 1;
-    bg_tile_shift_reg_hi <<= 1;
+    if (PPUMASK.bits.bg_enable) {
+      bg_tile_shift_reg_lo <<= 1;
+      bg_tile_shift_reg_hi <<= 1;
 
-    bg_attr_shift_reg_lo <<= 1;
-    bg_attr_shift_reg_hi <<= 1;
+      bg_attr_shift_reg_lo <<= 1;
+      bg_attr_shift_reg_hi <<= 1;
+    }
   };
   auto LoadShiftRegisters = [&]() {
-    bg_tile_shift_reg_lo = (bg_tile_shift_reg_lo & 0xFF00) | (next_bg_tile_lsb);
-    bg_tile_shift_reg_hi = (bg_tile_shift_reg_hi & 0xFF00) | (next_bg_tile_msb);
+    if (PPUMASK.bits.bg_enable) {
+      bg_tile_shift_reg_lo =
+          (bg_tile_shift_reg_lo & 0xFF00) | (next_bg_tile_lsb);
+      bg_tile_shift_reg_hi =
+          (bg_tile_shift_reg_hi & 0xFF00) | (next_bg_tile_msb);
 
-    uint8_t l_pattern = next_bg_attrib & 0b01 ? 0xFF : 0x00;
-    uint8_t h_pattern = next_bg_attrib & 0b10 ? 0xFF : 0x00;
+      uint8_t l_pattern = next_bg_attrib & 0b01 ? 0xFF : 0x00;
+      uint8_t h_pattern = next_bg_attrib & 0b10 ? 0xFF : 0x00;
 
-    bg_attr_shift_reg_lo = (bg_attr_shift_reg_lo & 0xFF00) | (l_pattern);
-    bg_attr_shift_reg_hi = (bg_attr_shift_reg_hi & 0xFF00) | (h_pattern);
+      bg_attr_shift_reg_lo = (bg_attr_shift_reg_lo & 0xFF00) | (l_pattern);
+      bg_attr_shift_reg_hi = (bg_attr_shift_reg_hi & 0xFF00) | (h_pattern);
+    }
   };
 
   if (scanlines >= -1 && scanlines <= 239) {
@@ -367,7 +381,8 @@ void NedNes::Ned2C02::clock() {
     }
 
     // NOTE: i think cycles should start from 1 instead of 2
-    if (cycles >= 2 && cycles < 258 || cycles >= 321 && cycles <= 337) {
+
+    if (cycles >= 1 && cycles < 258 || cycles >= 321 && cycles <= 337) {
 
       UpdateShiftRegisters();
       switch ((cycles - 1) % 8) {
@@ -376,6 +391,10 @@ void NedNes::Ned2C02::clock() {
         LoadShiftRegisters();
         // reading the next tile nametable ID
         next_bg_tile_id = ppuRead(0x2000 | (v_reg.reg & 0x0FFF));
+        /* printf("%d %d reading from: %X\n", cycles, ((cycles - 1) % 8), */
+        /* (0x2000 | (v_reg.reg & 0x0FFF))); */
+
+        /* next_bg_tile_id = 0x03; */
         break;
       }
       case 2: {
@@ -477,21 +496,23 @@ void NedNes::Ned2C02::clock() {
 
   // compositon
 
-  if ((cycles >= 1 && cycles <= 256 && scanlines >= 0 && scanlines < 240) ||
-      false) {
-    uint16_t bg_pixel;
-    uint16_t bg_palette;
-    uint16_t mutx = 0x8000 >> fine_x;
+  if ((cycles >= 1 && cycles <= 256 && scanlines >= 0 && scanlines < 240)) {
 
-    bg_pixel = ((bg_tile_shift_reg_hi & mutx) > 0) << 1 |
-               ((bg_tile_shift_reg_lo & mutx) > 0);
+    if (PPUMASK.bits.bg_enable) {
+      uint16_t bg_pixel;
+      uint16_t bg_palette;
+      uint16_t mutx = 0x8000 >> fine_x;
 
-    bg_palette = ((bg_attr_shift_reg_hi & mutx) > 0) << 1 |
-                 ((bg_attr_shift_reg_lo & mutx) > 0);
-    if (scrSurface) {
-      SET_PIXEL(scrSurface->pixels, cycles - 1, scanlines, scrSurface->pitch,
+      bg_pixel = ((bg_tile_shift_reg_hi & mutx) > 0) << 1 |
+                 ((bg_tile_shift_reg_lo & mutx) > 0);
 
-                getColorFromPalette(bg_palette, bg_pixel));
+      bg_palette = ((bg_attr_shift_reg_hi & mutx) > 0) << 1 |
+                   ((bg_attr_shift_reg_lo & mutx) > 0);
+      if (scrSurface) {
+        SET_PIXEL(scrSurface->pixels, cycles - 1, scanlines, scrSurface->pitch,
+
+                  getColorFromPalette(bg_palette, bg_pixel));
+      }
     }
   }
 
@@ -544,6 +565,53 @@ SDL_Texture *NedNes::Ned2C02::getPatternTable(uint8_t i, uint8_t palette) {
           int xPos = xTile * 8 + (7 - col);
           SET_PIXEL(pixels, xPos, yPos, pitch,
                     getColorFromPalette(palette, pixel));
+        }
+      }
+    }
+  }
+
+  SDL_UnlockTexture(tex);
+  return tex;
+}
+
+SDL_Texture *NedNes::Ned2C02::getNameTable(uint8_t i, uint8_t palette) {
+
+  uint8_t idx = i & 0x03;
+  SDL_Texture *tex = nameTableTexture[idx];
+
+  Uint32 *pixels = nullptr;
+  int pitch;
+
+  SDL_LockTexture(tex, nullptr, (void **)(&pixels), &pitch);
+
+  uint16_t offset = 0x2000 | ((uint16_t)(idx) << 10);
+
+  for (int YTile = 0; YTile < 30; YTile++) {
+    for (int XTile = 0; XTile < 32; XTile++) {
+
+      uint16_t addr = (YTile << 5) + XTile;
+
+      uint16_t tileID = ppuRead(addr + offset);
+
+      for (int row = 0; row < 8; row++) {
+        uint8_t tile_lsb =
+            ppuRead((PPUCTRL.bits.bg_select << 12) + (tileID << 4) + 0 + row);
+        uint8_t tile_msb =
+            ppuRead((PPUCTRL.bits.bg_select << 12) + (tileID << 4) + 8 + row);
+
+        for (int col = 0; col < 8; col++) {
+
+          uint8_t pixel = (tile_lsb & 0x01) | ((tile_msb & 0x01) << 1);
+
+          int yPos = YTile * 8 + row;
+          int xPos = XTile * 8 + (7 - col);
+
+          if (pixels) {
+            SET_PIXEL(pixels, xPos, yPos, pitch,
+                      getColorFromPalette(palette, pixel));
+          }
+          tile_lsb >>= 1;
+          tile_msb >>= 1;
         }
       }
     }
