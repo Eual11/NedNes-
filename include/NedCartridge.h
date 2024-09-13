@@ -11,7 +11,9 @@
 enum Mirror {
 
   HORIZONTAL,
-  VERTICAL
+  VERTICAL,
+  ONESCREEN_LO,
+  ONESCREEN_HI,
 };
 namespace NedNes {
 class NedCartrdige {

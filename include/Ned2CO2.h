@@ -127,6 +127,7 @@ public:
   SDL_Texture *getScreenTexture();
   SDL_Texture *getPatternTable(uint8_t i, uint8_t palette);
 
+  SDL_Texture *getNameTable(uint8_t i, uint8_t palette);
   Uint32 getColorFromPalette(uint8_t palette, uint8_t idx);
   bool isFrameComplete() { return frameComplete; };
 
@@ -145,7 +146,7 @@ private:
   SDL_Texture *screenTexture = nullptr;
   SDL_Renderer *renderer = nullptr;
   SDL_Texture *patternTableTexture[2];
-  SDL_Texture *nameTableTexture[2];
+  SDL_Texture *nameTableTexture[4];
   SDL_Surface *scrSurface = nullptr;
   SDL_Color paletteColor[0x40] = {
       {0x7C, 0x7C, 0x7C, 0xFF}, {0x00, 0x00, 0xFC, 0xFF},
