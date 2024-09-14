@@ -99,19 +99,20 @@ public:
   union loopy_reg {
     struct {
 
-      uint8_t coarse_x : 5;
-      uint8_t coarse_y : 5;
-      uint8_t nametable_x : 1;
-      uint8_t nametable_y : 1;
-      uint8_t fine_y : 3;
-      uint8_t unused : 1;
+      uint16_t coarse_x : 5;
+      uint16_t coarse_y : 5;
+      uint16_t nametable_x : 1;
+      uint16_t nametable_y : 1;
+      uint16_t fine_y : 3;
+      uint16_t unused : 1;
     } bits;
 
     uint16_t reg;
   };
   loopy_reg v_reg;
   loopy_reg t_reg;
-  uint8_t fine_x;
+
+  uint8_t fine_x = 0x00;
   // ppu clock
   void clock();
 
@@ -130,6 +131,8 @@ public:
   SDL_Texture *getNameTable(uint8_t i, uint8_t palette);
   Uint32 getColorFromPalette(uint8_t palette, uint8_t idx);
   bool isFrameComplete() { return frameComplete; };
+
+  void reset();
 
 private:
   int cycles = 0;

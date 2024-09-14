@@ -31,6 +31,7 @@ public:
   std::shared_ptr<NedCartrdige> cart = nullptr;
 
   void clock();
+  void reset();
   uint32_t SystemClock = 0;
 };
 } // namespace NedNes
