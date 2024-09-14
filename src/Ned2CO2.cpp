@@ -48,19 +48,16 @@ uint8_t NedNes::Ned2C02::cpuRead(uint16_t addr) {
   case 0x00: {
     // PPU Control Register
 
-    data = PPUCTRL.value;
     break;
   }
 
   case 0x01: {
     // PPU Mask Registers
-    data = PPUMASK.value;
     break;
   }
 
   case 0x02: {
     // PPU Status Register
-    PPUSTATUS.bits.vblank = 1;
     data = (PPUSTATUS.value & 0xE0) | (buffered_data & 0x1F);
 
     // reseting vblank
@@ -93,7 +90,7 @@ uint8_t NedNes::Ned2C02::cpuRead(uint16_t addr) {
     data = buffered_data;
     buffered_data = ppuRead(v_reg.reg);
 
-    if (addr >= 0x3000) {
+    if (addr >= 0x3F00) {
       // palette table doesn't rely on buffering
       data = buffered_data;
     }
@@ -156,7 +153,7 @@ void NedNes::Ned2C02::cpuWrite(uint16_t addr, uint8_t data) {
     // PPU Address Register
     if (addr_latch == 0) {
       // reading hi byte
-      t_reg.reg = (t_reg.reg & 0x00FF) | ((uint16_t)(data) << 8);
+      t_reg.reg = (t_reg.reg & 0x00FF) | ((uint16_t)(data & 0x3F) << 8);
       addr_latch = 1; // flipping address latch
     } else {
       t_reg.reg = (t_reg.reg & 0xFF00) | data;
@@ -188,11 +185,12 @@ uint8_t NedNes::Ned2C02::ppuRead(uint16_t addr) {
 
   uint8_t data = 0x00;
 
+  addr &= 0x3FFF;
   if (cart->ppuRead(addr, data)) {
   } else if (addr >= 0x0000 && addr <= 0x1FFF) {
     // read from pattern table
     data = patternTable[(addr & 0x1000) >> 12][addr & 0xFFF];
-  } else if (addr >= 0x2000 && addr <= 0x2FFF) {
+  } else if (addr >= 0x2000 && addr <= 0x3EFF) {
     // nametable stuff
 
     addr = addr & 0x0FFF;
@@ -219,8 +217,8 @@ uint8_t NedNes::Ned2C02::ppuRead(uint16_t addr) {
       break;
     }
     }
-  } else if (addr >= 0x3000 && addr <= 0x3FFF) {
-    addr &= 0x1F;
+  } else if (addr >= 0x3F00 && addr <= 0x3FFF) {
+    addr &= 0x001F;
     if (addr == 0x0010)
       addr = 0x0000;
     if (addr == 0x0014)
@@ -229,7 +227,7 @@ uint8_t NedNes::Ned2C02::ppuRead(uint16_t addr) {
       addr = 0x0008;
     if (addr == 0x001C)
       addr = 0x000C;
-    return paletteTable[addr];
+    return paletteTable[addr] & (PPUMASK.bits.greyscale ? 0x30 : 0x3F);
   }
 
   // do something idk yet lmao
@@ -238,14 +236,14 @@ uint8_t NedNes::Ned2C02::ppuRead(uint16_t addr) {
 }
 void NedNes::Ned2C02::ppuWrite(uint16_t addr, uint8_t data) {
 
+  addr &= 0x3FFF;
   if (cart->ppuWrite(addr, data)) {
     // cartridge having veto power
 
   } else if (addr >= 0x0000 && addr <= 0x1FFF) {
     // write to pattern table
     patternTable[(addr & 0x1000) >> 12][addr & 0xFFF] = data;
-  } else if (addr >= 0x2000 && addr <= 0x2FFF) {
-    // TODO: implement writing to nametable
+  } else if (addr >= 0x2000 && addr <= 0x3EFF) {
 
     addr = addr & 0xFFF;
 
@@ -262,7 +260,7 @@ void NedNes::Ned2C02::ppuWrite(uint16_t addr, uint8_t data) {
     }
     case VERTICAL: {
 
-      if ((addr >= 0x00 && addr <= 0x3FF) || addr >= 0x800 && addr <= 0xBFF) {
+      if ((addr >= 0x00 && addr <= 0x3FF) || (addr >= 0x800 && addr <= 0xBFF)) {
         nameTable[0][addr & 0x3FF] = data;
       } else if ((addr >= 0x400 && addr <= 0x7FF) ||
                  (addr >= 0xC00 && addr <= 0xFFF)) {
@@ -272,7 +270,7 @@ void NedNes::Ned2C02::ppuWrite(uint16_t addr, uint8_t data) {
       break;
     }
     }
-  } else if (addr >= 0x3000 && addr <= 0x3FFF) {
+  } else if (addr >= 0x3F00 && addr <= 0x3FFF) {
 
     addr &= 0x1F;
     // hardincoding the mirroring
@@ -284,10 +282,27 @@ void NedNes::Ned2C02::ppuWrite(uint16_t addr, uint8_t data) {
       addr = 0x0008;
     if (addr == 0x001C)
       addr = 0x000C;
-    printf("writing to pallete at address %X value %X \n", addr, data);
     paletteTable[addr] = data;
   }
   // do something idk yet lmao
+}
+void NedNes::Ned2C02::reset() {
+  fine_x = 0x00;
+  v_reg.reg = 0x00;
+  t_reg.reg = 0x00;
+  addr_latch = 0;
+  scanlines = 0;
+  cycles = 0;
+  next_bg_tile_id = 0x00;
+  next_bg_attrib = 0x00;
+  next_bg_tile_lsb = 0x00;
+  next_bg_tile_msb = 0x00;
+  bg_tile_shift_reg_lo = 0x00;
+  bg_tile_shift_reg_hi = 0x00;
+  bg_attr_shift_reg_lo = 0x00;
+  bg_attr_shift_reg_hi = 0x00;
+  PPUSTATUS.value = 0x00;
+  PPUCTRL.value = 0x00;
 }
 
 void NedNes::Ned2C02::connectBus(std::shared_ptr<NedBus> _bus) { bus = _bus; }
@@ -300,7 +315,7 @@ void NedNes::Ned2C02::clock() {
   // advancing the clock count
 
   auto IncrementX = [&]() {
-    if (PPUMASK.bits.bg_enable) {
+    if (PPUMASK.bits.bg_enable || PPUMASK.bits.sprite_enable) {
       if (v_reg.bits.coarse_x == 31) {
         v_reg.bits.coarse_x = 0;
         v_reg.bits.nametable_x = ~v_reg.bits.nametable_x;
@@ -311,7 +326,7 @@ void NedNes::Ned2C02::clock() {
   };
 
   auto IncrementY = [&]() {
-    if (PPUMASK.bits.bg_enable) {
+    if (PPUMASK.bits.bg_enable || PPUMASK.bits.sprite_enable) {
       if (v_reg.bits.fine_y < 7) {
         v_reg.bits.fine_y += 1;
       } else {
@@ -354,18 +369,14 @@ void NedNes::Ned2C02::clock() {
     }
   };
   auto LoadShiftRegisters = [&]() {
-    if (PPUMASK.bits.bg_enable) {
-      bg_tile_shift_reg_lo =
-          (bg_tile_shift_reg_lo & 0xFF00) | (next_bg_tile_lsb);
-      bg_tile_shift_reg_hi =
-          (bg_tile_shift_reg_hi & 0xFF00) | (next_bg_tile_msb);
+    bg_tile_shift_reg_lo = (bg_tile_shift_reg_lo & 0xFF00) | (next_bg_tile_lsb);
+    bg_tile_shift_reg_hi = (bg_tile_shift_reg_hi & 0xFF00) | (next_bg_tile_msb);
 
-      uint8_t l_pattern = next_bg_attrib & 0b01 ? 0xFF : 0x00;
-      uint8_t h_pattern = next_bg_attrib & 0b10 ? 0xFF : 0x00;
+    uint8_t l_pattern = next_bg_attrib & 0b01 ? 0xFF : 0x00;
+    uint8_t h_pattern = next_bg_attrib & 0b10 ? 0xFF : 0x00;
 
-      bg_attr_shift_reg_lo = (bg_attr_shift_reg_lo & 0xFF00) | (l_pattern);
-      bg_attr_shift_reg_hi = (bg_attr_shift_reg_hi & 0xFF00) | (h_pattern);
-    }
+    bg_attr_shift_reg_lo = (bg_attr_shift_reg_lo & 0xFF00) | (l_pattern);
+    bg_attr_shift_reg_hi = (bg_attr_shift_reg_hi & 0xFF00) | (h_pattern);
   };
 
   if (scanlines >= -1 && scanlines <= 239) {
@@ -391,46 +402,24 @@ void NedNes::Ned2C02::clock() {
         LoadShiftRegisters();
         // reading the next tile nametable ID
         next_bg_tile_id = ppuRead(0x2000 | (v_reg.reg & 0x0FFF));
-        /* printf("%d %d reading from: %X\n", cycles, ((cycles - 1) % 8), */
-        /* (0x2000 | (v_reg.reg & 0x0FFF))); */
-
-        /* next_bg_tile_id = 0x03; */
         break;
       }
       case 2: {
         // load attribute table data for this tile
 
-        uint16_t nx = v_reg.bits.nametable_x << 10;
-        uint16_t ny = v_reg.bits.nametable_y << 11;
+        uint16_t nx = v_reg.bits.nametable_x;
+        uint16_t ny = v_reg.bits.nametable_y;
+        uint16_t n_select = (ny << 1 | nx) << 10;
         uint16_t cx = v_reg.bits.coarse_x >> 2;
         uint16_t cy = (v_reg.bits.coarse_y >> 2) << 3;
-        uint16_t addr = 0X23C0 | (nx | ny | (cx | cy));
+        uint16_t addr = 0X23C0 | (n_select | cy | cx);
         next_bg_attrib = ppuRead(addr);
-
         cx = v_reg.bits.coarse_x & 0x2;
-        cy = (v_reg.bits.coarse_y & 0x2) << 1;
+        cy = (v_reg.bits.coarse_y & 0x2);
 
-        switch (cx | cy) {
-        case 0x00: {
-          next_bg_attrib = next_bg_attrib & 0x3;
-          break;
-        }
-        case 0x01: {
-          next_bg_attrib = (next_bg_attrib >> 2) & 0x3;
-          break;
-        }
-        case 0x02: {
-          next_bg_attrib = (next_bg_attrib >> 4) & 0x3;
-          break;
-        }
-        case 0x03: {
-          next_bg_attrib = (next_bg_attrib >> 6) & 0x3;
-          break;
-        }
-        }
-        if (v_reg.bits.coarse_y & 0x02)
+        if (cy & 0x2)
           next_bg_attrib >>= 4;
-        if (v_reg.bits.coarse_x & 0x02)
+        if (cx & 0x2)
           next_bg_attrib >>= 2;
         next_bg_attrib &= 0x03;
         break;
@@ -624,6 +613,6 @@ Uint32 NedNes::Ned2C02::getColorFromPalette(uint8_t palette, uint8_t idx) {
 
   palette <<= 2;
 
-  SDL_Color col = paletteColor[ppuRead(0x3000 + palette + idx)];
+  SDL_Color col = paletteColor[ppuRead(0x3F00 + palette + idx)];
   return COLOR_TO_UINT32(col);
 }

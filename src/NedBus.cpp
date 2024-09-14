@@ -55,3 +55,8 @@ void NedNes::NedBus::clock() {
   }
   SystemClock++;
 }
+
+void NedNes::NedBus::reset() {
+  cpu->reset();
+  ppu->reset();
+}

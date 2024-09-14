@@ -37,8 +37,8 @@ void close_program();
 int main(int argc, char **argv) {
 
   init();
-  auto cart =
-      std::make_shared<NedNes::NedCartrdige>("../rom/tests/nestest.nes");
+  auto cart = std::make_shared<NedNes::NedCartrdige>(
+      "../rom/games/Super Mario Bros (E).nes");
 
   // setting up nednes bus
   auto EmuBus = std::make_shared<NedNes::NedBus>();
@@ -52,7 +52,8 @@ int main(int argc, char **argv) {
   EmuBus->connectCpu(CPU);
   CPU->connectBus(EmuBus);
   /* CPU->logFile = f; */
-  CPU->reset();
+
+  EmuBus->reset();
   printf("Program %s running with %d args\n", argv[0], argc);
   if (cart->imageValid()) {
     printf("Rom Loaded\n");
@@ -89,9 +90,18 @@ int main(int argc, char **argv) {
           break;
         }
         case SDLK_RETURN: {
-          // step one clock
 
-          EmuBus->clock();
+          printf("Framed Skipped\n");
+          // step one clock
+          while (!EmuBus->ppu->isFrameComplete()) {
+            EmuBus->clock();
+          }
+          while (!EmuBus->cpu->complete()) {
+            EmuBus->clock();
+          }
+          while (EmuBus->cpu->complete()) {
+            EmuBus->clock();
+          }
 
           break;
         }
