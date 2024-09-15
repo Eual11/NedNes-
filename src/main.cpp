@@ -37,9 +37,10 @@ void close_program();
 int main(int argc, char **argv) {
 
   init();
-  auto cart = std::make_shared<NedNes::NedCartrdige>(
-      "../rom/games/Super Mario Bros (E).nes");
+  auto cart =
+      std::make_shared<NedNes::NedCartrdige>("../rom/games/donkey kong.nes");
 
+  auto joypad1 = std::make_shared<NedNes::NedJoypad>();
   // setting up nednes bus
   auto EmuBus = std::make_shared<NedNes::NedBus>();
   auto CPU = std::make_shared<NedNes::Ned6502>();
@@ -50,6 +51,7 @@ int main(int argc, char **argv) {
   EmuBus->connectCartridge(cart);
   EmuBus->connectPpu(PPU);
   EmuBus->connectCpu(CPU);
+  EmuBus->connectJoypad(0, joypad1);
   CPU->connectBus(EmuBus);
   /* CPU->logFile = f; */
 
@@ -62,6 +64,14 @@ int main(int argc, char **argv) {
   bool quit = false;
   std::map<uint16_t, std::string> disMap;
 
+  std::map<SDL_KeyCode, NedNes::JOYPAD_BUTTONS> keymap = {
+
+      {SDLK_a, NedNes::BUTTON_A},       {SDLK_b, NedNes::BUTTON_B},
+
+      {SDLK_q, NedNes::BUTTON_SELECT},  {SDLK_e, NedNes::BUTTON_START},
+      {SDLK_UP, NedNes::BUTTON_UP},     {SDLK_DOWN, NedNes::BUTTON_DOWN},
+      {SDLK_LEFT, NedNes::BUTTON_LEFT}, {SDLK_RIGHT, NedNes::BUTTON_RIGHT},
+  };
   SDL_Event e;
   while (!quit) {
 
@@ -115,6 +125,20 @@ int main(int argc, char **argv) {
           p_idx %= 8;
           break;
         }
+        }
+
+        if (keymap.find(static_cast<SDL_KeyCode>(e.key.keysym.sym)) !=
+            keymap.end()) {
+
+          EmuBus->Press(0, keymap[static_cast<SDL_KeyCode>(e.key.keysym.sym)]);
+        }
+      } else if (e.type == SDL_KEYUP) {
+
+        if (keymap.find(static_cast<SDL_KeyCode>(e.key.keysym.sym)) !=
+            keymap.end()) {
+
+          EmuBus->Release(0,
+                          keymap[static_cast<SDL_KeyCode>(e.key.keysym.sym)]);
         }
       }
     }

@@ -2,6 +2,7 @@
 #include "../include/Ned6502.h"
 #include "Ned2CO2.h"
 #include "NedCartridge.h"
+#include "NedJoypad.h"
 #include <array>
 #include <memory>
 #include <stdint.h>
@@ -26,10 +27,15 @@ public:
   void connectCpu(std::shared_ptr<Ned6502>);
   void connectPpu(std::shared_ptr<Ned2C02>);
   void connectCartridge(std::shared_ptr<NedCartrdige>);
+  void connectJoypad(int n, std::shared_ptr<NedJoypad>);
   std::shared_ptr<Ned6502> cpu = nullptr;
   std::shared_ptr<Ned2C02> ppu = nullptr;
   std::shared_ptr<NedCartrdige> cart = nullptr;
+  std::shared_ptr<NedJoypad> joypads[2] = {nullptr, nullptr};
 
+  // NOTE: seems reasonable for now
+  void Press(int n, JOYPAD_BUTTONS btn);
+  void Release(int n, JOYPAD_BUTTONS btn);
   void clock();
   void reset();
   uint32_t SystemClock = 0;

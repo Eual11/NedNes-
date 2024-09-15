@@ -18,6 +18,12 @@ uint8_t NedNes::NedBus::cpuRead(uint16_t addr) {
     data = ram[addr & 0x7FF];
   } else if (addr >= 0x2000 && addr <= 0x3FFF) {
     data = ppu->cpuRead(addr & 0x2007);
+  } else if (addr == 0x4016 || addr == 0x4017) {
+
+    auto pad = joypads[addr - 0x4016];
+    if (pad) {
+      data = pad->read();
+    }
   }
 
   return data;
@@ -31,6 +37,12 @@ void NedNes::NedBus::cpuWrite(uint16_t addr, uint8_t val) {
     ram[addr & 0x7FF] = val;
   } else if (addr >= 0x2000 && addr <= 0x3FFF) {
     ppu->cpuWrite(addr & 0x2007, val);
+  } else if (addr == 0x4016 || addr == 0x4017) {
+    auto pad = joypads[addr - 0x4016];
+
+    if (pad) {
+      pad->write(val);
+    }
   }
 }
 
@@ -55,8 +67,28 @@ void NedNes::NedBus::clock() {
   }
   SystemClock++;
 }
+void NedNes::NedBus::Press(int n, JOYPAD_BUTTONS btn) {
+  n %= 2;
+
+  auto pad = joypads[n];
+  if (pad) {
+    pad->Press(btn);
+  }
+}
+void NedNes::NedBus::Release(int n, JOYPAD_BUTTONS btn) {
+  n %= 2;
+
+  auto pad = joypads[n];
+  if (pad) {
+    pad->Release(btn);
+  }
+}
 
 void NedNes::NedBus::reset() {
   cpu->reset();
   ppu->reset();
+}
+void NedNes::NedBus::connectJoypad(int n, std::shared_ptr<NedJoypad> con) {
+  n %= 2;
+  joypads[n] = con;
 }
