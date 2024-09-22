@@ -23,13 +23,14 @@ public:
   //
   void Press(JOYPAD_BUTTONS btn);
   void Release(JOYPAD_BUTTONS btn);
+  void setState(uint8_t st);
   //  for cpu access
   void write(uint8_t);
   bool read();
 
 private:
-  bool strobe = true;
   uint8_t state = 0X00;
+  bool strobe = true;
   int idx = 0;
 };
 } // namespace NedNes

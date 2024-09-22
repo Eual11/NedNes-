@@ -24,3 +24,4 @@ bool NedJoypad::read() {
   }
   return false;
 }
+void NedJoypad::setState(uint8_t st) { this->state = st; }
