@@ -135,13 +135,14 @@ public:
   bool isFrameComplete() { return frameComplete; };
 
   void reset();
-  uint8_t *pOAM = (uint8_t *)(oam);
   struct oamEntry {
     uint8_t y;
     uint8_t id;
     uint8_t attrib;
     uint8_t x;
   };
+  oamEntry oam[64];
+  uint8_t *pOAM = (uint8_t *)(oam);
 
   // sprite stuff
   //
@@ -154,8 +155,8 @@ public:
 private:
   int cycles = 0;
   int scanlines = 0;
-
-  oamEntry oam[64];
+  bool spriteZeroPossible = false;
+  bool spriteZeroRendered = false;
 
   unsigned int clockCount = 0;
   bool frameComplete = false;

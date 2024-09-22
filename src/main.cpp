@@ -25,7 +25,7 @@ TTF_Font *global_font = nullptr;
 //
 //
 
-SDL_Rect scrArea = {0, 0, 256, 240};
+SDL_Rect scrArea = {0, 0, 256 * 3, 240 * 3};
 SDL_Rect patternTableArea1 = {0, (WINDOW_HEIGHT - (128 + 30)), 128, 128};
 SDL_Rect patternTableArea2 = {256, (WINDOW_HEIGHT - (128 + 30)), 128, 128};
 SDL_Rect nametableArea = {0, 300, 256, 240};
@@ -36,9 +36,10 @@ void close_program();
 
 int main(int argc, char **argv) {
 
+  // TODO: better controllers
   init();
-  auto cart =
-      std::make_shared<NedNes::NedCartrdige>("../rom/games/donkey kong.nes");
+  auto cart = std::make_shared<NedNes::NedCartrdige>(
+      "../rom/games/Super Mario Bros (E).nes");
 
   auto joypad1 = std::make_shared<NedNes::NedJoypad>();
   // setting up nednes bus
@@ -66,7 +67,7 @@ int main(int argc, char **argv) {
 
   std::map<SDL_KeyCode, NedNes::JOYPAD_BUTTONS> keymap = {
 
-      {SDLK_a, NedNes::BUTTON_A},       {SDLK_b, NedNes::BUTTON_B},
+      {SDLK_a, NedNes::BUTTON_A},       {SDLK_d, NedNes::BUTTON_B},
 
       {SDLK_q, NedNes::BUTTON_SELECT},  {SDLK_e, NedNes::BUTTON_START},
       {SDLK_UP, NedNes::BUTTON_UP},     {SDLK_DOWN, NedNes::BUTTON_DOWN},
@@ -79,6 +80,22 @@ int main(int argc, char **argv) {
       if (e.type == SDL_QUIT) {
         quit = true;
       }
+
+      // Get the current state of the keyboard
+      const Uint8 *state = SDL_GetKeyboardState(NULL);
+
+      // Initialize the joypad state to zero
+      uint8_t joypadState = 0;
+
+      // Check for key presses and update joypad state
+      for (const auto &pair : keymap) {
+        if (state[SDL_GetScancodeFromKey(pair.first)]) {
+          joypadState |= (1 << pair.second); // Set the corresponding bit
+        }
+      }
+      EmuBus->setState(0, joypadState);
+
+      // Update the joypad state
 
       if (e.type == SDL_KEYDOWN) {
         switch (e.key.keysym.sym) {
@@ -126,20 +143,6 @@ int main(int argc, char **argv) {
           break;
         }
         }
-
-        if (keymap.find(static_cast<SDL_KeyCode>(e.key.keysym.sym)) !=
-            keymap.end()) {
-
-          EmuBus->Press(0, keymap[static_cast<SDL_KeyCode>(e.key.keysym.sym)]);
-        }
-      } else if (e.type == SDL_KEYUP) {
-
-        if (keymap.find(static_cast<SDL_KeyCode>(e.key.keysym.sym)) !=
-            keymap.end()) {
-
-          EmuBus->Release(0,
-                          keymap[static_cast<SDL_KeyCode>(e.key.keysym.sym)]);
-        }
       }
     }
 
@@ -167,53 +170,62 @@ int main(int argc, char **argv) {
     //
     //
     // Drawing disassembled instructions
-    disMap = EmuBus->cpu->disassemble(4);
-    col = {0x04, 0x09c, 0xf4, 0xff};
-    for (auto &d : disMap) {
-      std::string instr = toHex(d.first) + " " + d.second;
-      SDL_Rect r = DrawText(gRenderer, global_font, instr, WINDOW_WIDTH - 350,
-                            R.h + 10, col);
-      R.h += r.h;
-
-      col = {0xff, 0xff, 0xff, 0x00};
-    }
+    /* disMap = EmuBus->cpu->disassemble(4); */
+    /* col = {0x04, 0x09c, 0xf4, 0xff}; */
+    /* for (auto &d : disMap) { */
+    /*   std::string instr = toHex(d.first) + " " + d.second; */
+    /*   SDL_Rect r = DrawText(gRenderer, global_font, instr, WINDOW_WIDTH -
+     * 350, */
+    /*                         R.h + 10, col); */
+    /*   R.h += r.h; */
+    /**/
+    /*   col = {0xff, 0xff, 0xff, 0x00}; */
+    /* } */
     NedNes::Ned2C02::oamEntry *oam =
         (NedNes::Ned2C02::oamEntry *)EmuBus->ppu->pOAM;
 
-    R.x = 400;
-    R.h = 0x00;
     auto toInt = [&](int s) { return std::to_string(s); };
-    for (int i = 0; i < 5; i++) {
-      auto sprite = oam[i];
-      std::string entry = toHex(i) + " " + "(" + toInt(sprite.x) + ", " +
-                          toInt(sprite.y) + ") " + toHex(sprite.id) + " " +
-                          toHex(sprite.attrib);
-      SDL_Rect r = DrawText(gRenderer, global_font, entry, 400, R.h + 10, col);
-      R.h += r.h;
 
-      col = {0xff, 0xff, 0xff, 0x00};
-    }
-    SDL_RenderCopy(gRenderer, EmuBus->ppu->getScreenTexture(), nullptr,
-                   &scrArea);
-    SDL_RenderCopy(gRenderer, EmuBus->ppu->getPatternTable(0, p_idx), nullptr,
-                   &patternTableArea1);
-    SDL_RenderCopy(gRenderer, EmuBus->ppu->getPatternTable(1, p_idx), nullptr,
-                   &patternTableArea2);
+    /* for (int i = 0; i < 30; i++) { */
+    /*   auto sprite = oam[i]; */
+    /*   std::string entry = toHex(i) + " " + "(" + toInt(sprite.x) + ", " + */
+    /*                       toInt(sprite.y) + ") " + toHex(sprite.id) + " " +
+     */
+    /*                       toHex(sprite.attrib); */
+    /*   SDL_Rect r = DrawText(gRenderer, global_font, entry, WINDOW_WIDTH -
+     * 350, */
+    /*                         R.h + 10, col); */
+    /*   R.h += r.h; */
+    /**/
+    /*   col = {0xff, 0xff, 0xff, 0x00}; */
+    /* } */
 
-    for (int i = 0; i < 4; i++) {
+    SDL_RenderCopy(
+        gRenderer, EmuBus->ppu->getScreenTexture(), nullptr,
+        &scrArea); /* SDL_RenderCopy(gRenderer, EmuBus->ppu->getPatternTable(0,
+                    * p_idx), nullptr, */
+    /*                &patternTableArea1); */
+    /* SDL_RenderCopy(gRenderer, EmuBus->ppu->getPatternTable(1, p_idx),
+     * nullptr, */
+    /*                &patternTableArea2); */
 
-      int offset = 0;
-      if (i > 0)
-        offset = 2 * i;
-      SDL_Rect area = {nametableArea.x + nametableArea.w * i + offset,
-                       nametableArea.y, nametableArea.w, nametableArea.h};
-      SDL_RenderCopy(gRenderer, EmuBus->ppu->getNameTable(i, p_idx), nullptr,
-                     &area);
-    }
-
-    DisplayNESColorPalettes(gRenderer, EmuBus->ppu,
-                            patternTableArea1.x + 2 * patternTableArea1.w + 200,
-                            patternTableArea1.y, 16, 10);
+    /* for (int i = 0; i < 4; i++) { */
+    /**/
+    /*   int offset = 0; */
+    /*   if (i > 0) */
+    /*     offset = 2 * i; */
+    /*   SDL_Rect area = {nametableArea.x + nametableArea.w * i + offset, */
+    /*                    nametableArea.y, nametableArea.w, nametableArea.h};
+     */
+    /*   SDL_RenderCopy(gRenderer, EmuBus->ppu->getNameTable(i, p_idx),
+     * nullptr, */
+    /*                  &area); */
+    /* } */
+    /**/
+    /* DisplayNESColorPalettes(gRenderer, EmuBus->ppu, */
+    /*                         patternTableArea1.x + 2 * patternTableArea1.w +
+     * 200, */
+    /*                         patternTableArea1.y, 16, 10); */
     SDL_RenderPresent(gRenderer);
   }
 
@@ -237,7 +249,8 @@ void init() {
     exit(1);
   }
 
-  gRenderer = SDL_CreateRenderer(gWindow, -1, SDL_RENDERER_ACCELERATED);
+  gRenderer = SDL_CreateRenderer(
+      gWindow, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
 
   if (!gRenderer) {
     fprintf(stderr, "Couldn't Create Renderer: %s\n", SDL_GetError());

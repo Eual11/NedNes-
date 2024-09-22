@@ -1,3 +1,4 @@
+#include "../include/Timer.h"
 #include <SDL2/SDL_rect.h>
 #include <SDL2/SDL_render.h>
 #include <SDL2/SDL_surface.h>
@@ -7,8 +8,6 @@
 #include "../include/Ned2CO2.h"
 #include <cstdint>
 #include <memory>
-// printf("PPUADDR: %04X, addr_latch: %d, PPUSTATUS: %02X\n", PPUADDR,
-// addr_latch, PPUSTATUS.value);
 NedNes::Ned2C02::Ned2C02(SDL_Renderer *gRenderer) {
 
   cycles = 0;
@@ -364,25 +363,24 @@ void NedNes::Ned2C02::clock() {
   };
 
   auto UpdateShiftRegisters = [&]() {
+    // Update background tile shift registers if background is enabled
     if (PPUMASK.bits.bg_enable) {
       bg_tile_shift_reg_lo <<= 1;
       bg_tile_shift_reg_hi <<= 1;
-
       bg_attr_shift_reg_lo <<= 1;
       bg_attr_shift_reg_hi <<= 1;
     }
-    if (PPUMASK.bits.sprite_enable) {
-      // shifting time!!
-      //
 
+    // Update sprite shift registers if sprite rendering is enabled
+    if (PPUMASK.bits.sprite_enable) {
+      // Only update during visible cycles for sprite evaluation
       if (cycles >= 1 && cycles <= 257) {
         for (int i = 0; i < spriteCount; i++) {
-
-          oamEntry sprite = scanlineSprites[i];
-
-          if (sprite.x > 0) {
-            sprite.x -= 1;
+          // Check if the sprite is still within the visible area
+          if (scanlineSprites[i].x > 0) {
+            scanlineSprites[i].x -= 1; // Move sprite to the left
           } else {
+            // Shift the sprite's shift registers
             sprite_shift_reg_lo[i] <<= 1;
             sprite_shift_reg_hi[i] <<= 1;
           }
@@ -390,6 +388,7 @@ void NedNes::Ned2C02::clock() {
       }
     }
   };
+
   auto LoadShiftRegisters = [&]() {
     bg_tile_shift_reg_lo = (bg_tile_shift_reg_lo & 0xFF00) | (next_bg_tile_lsb);
     bg_tile_shift_reg_hi = (bg_tile_shift_reg_hi & 0xFF00) | (next_bg_tile_msb);
@@ -489,98 +488,72 @@ void NedNes::Ned2C02::clock() {
       TransferX();
     }
     if (cycles == 257 && scanlines >= 0) {
-      // sprite evaluation stage
+      // Sprite evaluation stage
 
-      // clearing the scanlineSprites
-      //
       memset(scanlineSprites, 0xFF, 8 * sizeof(oamEntry));
       spriteCount = 0;
+
       for (int i = 0; i < 8; i++) {
-        // resetting the shifters
         sprite_shift_reg_lo[i] = 0x00;
         sprite_shift_reg_hi[i] = 0x00;
       }
-      uint8_t i = 0;
 
-      while (i < 64 && spriteCount < 9) {
-
+      spriteZeroPossible = false;
+      for (int i = 0; i < 64 && spriteCount < 9; i++) {
         oamEntry sprite = oam[i];
         int8_t spriteHeight = (PPUCTRL.bits.sprite_height) ? 16 : 8;
-
-        int16_t diff = scanlines - (int16_t)(sprite.y);
+        int16_t diff = (int16_t)scanlines - (int16_t)sprite.y;
 
         if (diff >= 0 && diff < spriteHeight) {
-          // passes the evaluation
-
           if (spriteCount < 8) {
-            scanlineSprites[spriteCount] = sprite;
+            if (i == 0)
+              spriteZeroPossible = true;
+            memcpy(&scanlineSprites[spriteCount], &oam[i], sizeof(oamEntry));
           }
           spriteCount++;
         }
-        i++;
       }
 
-      if (spriteCount >= 8) {
-        // sprite overflow has occured
+      // Check for sprite overflow
+      if (spriteCount > 8) {
         PPUSTATUS.bits.sprite_overflow = 1;
+        spriteCount = 8;
       }
     }
+    if (cycles == 340) { // Ensure the condition is true for execution
+      // At the end of the current scanline, update the shifters
 
-    if (cycles == 340) {
-      // at the end cycle of the current scanline, we will update the shifters
-      //
-
-      for (uint8_t i = 0; i < spriteCount; i++) {
-        uint8_t sprite_addr_lo, sprite_addr_hi;
-        uint8_t sprite_lo, sprite_hi;
+      for (int i = 0; i < spriteCount; i++) {
         oamEntry sprite = scanlineSprites[i];
 
-        // checking for sprite height
+        uint16_t sprite_addr_lo, sprite_addr_hi;
+        uint16_t sprite_lo, sprite_hi;
 
-        if (!PPUCTRL.bits.sprite_height) {
-          // the sprite is 8x8 size
+        int16_t spriteY = scanlines - sprite.y;
+        bool isSpriteHeight16 = PPUCTRL.bits.sprite_height;
+        bool isVerticallyFlipped = (sprite.attrib & 0x80) != 0;
+        bool isHorizontallyFlipped = (sprite.attrib & 0x40) != 0;
 
-          // checking for sprites vertical origentation
-          //
-          if ((sprite.attrib & 0x80) == 0) {
-
-            sprite_addr_lo = (PPUCTRL.bits.sprite_select << 12) |
-                             (sprite.id << 4) | (scanlines - sprite.y);
-          } else {
-
-            // flipping vertically
-            sprite_addr_lo = (PPUCTRL.bits.sprite_select << 12) |
-                             (sprite.id << 4) | (7 - scanlines - sprite.y);
-          }
+        if (!isSpriteHeight16) {
+          // 8x8 sprite
+          sprite_addr_lo = ((uint16_t)PPUCTRL.bits.sprite_select << 12) |
+                           ((uint16_t)sprite.id << 4) |
+                           (isVerticallyFlipped ? (7 - spriteY) : spriteY);
         } else {
-          // the sprite is 8x16 size
-          // check for virtical orientation
-          if ((sprite.attrib & 0x80) == 0x0) {
-
-            if (scanlines - sprite.y < 8) {
-              // top half of the sprite
-              sprite_addr_lo = ((PPUCTRL.bits.sprite_select & 0x01) << 12) |
-                               ((sprite.id & 0xFE) << 4) |
-                               ((scanlines - sprite.y) & 0x07);
-            } else {
-              // bottom half of the sprite
-              sprite_addr_lo = ((PPUCTRL.bits.sprite_select & 0x01) << 12) |
-                               (((sprite.id & 0xFE) + 1) << 4) |
-                               ((scanlines - sprite.y) & 0x07);
-            }
+          // 8x16 sprite
+          if (spriteY < 8) {
+            sprite_addr_lo = ((PPUCTRL.bits.sprite_select & 0x01) << 12) |
+                             ((sprite.id & 0xFE) << 4) | (spriteY & 0x07);
           } else {
-            // vertically flipped
-            if (scanlines - sprite.y < 8) {
-              sprite_addr_lo = ((PPUCTRL.bits.sprite_select & 0x01) << 12) |
-                               (((sprite.id & 0xFE) + 1) << 4) |
-                               ((7 - scanlines - sprite.y) & 0x07);
-
-            } else {
-
-              sprite_addr_lo = ((PPUCTRL.bits.sprite_select & 0x01) << 12) |
-                               ((sprite.id & 0xFE) << 4) |
-                               ((7 - scanlines - sprite.y) & 0x07);
-            }
+            sprite_addr_lo = ((PPUCTRL.bits.sprite_select & 0x01) << 12) |
+                             (((sprite.id & 0xFE) + 1) << 4) | (spriteY & 0x07);
+          }
+          // Handle vertical flipping
+          if (isVerticallyFlipped) {
+            sprite_addr_lo =
+                ((PPUCTRL.bits.sprite_select & 0x01) << 12) |
+                (((sprite.id & 0xFE) + (spriteY < 8 ? 1 : 0)) << 4) |
+                ((7 - spriteY) & 0x07);
           }
         }
 
@@ -589,22 +562,24 @@ void NedNes::Ned2C02::clock() {
         sprite_lo = ppuRead(sprite_addr_lo);
         sprite_hi = ppuRead(sprite_addr_hi);
 
-        // check for horizontal origentation and flip
-        auto reverse = [&](unsigned char b) {
-          b = (b & 0xF0) >> 4 | (b & 0x0F) << 4;
-          b = (b & 0xCC) >> 2 | (b & 0x33) << 2;
-          b = (b & 0xAA) >> 1 | (b & 0x55) << 1;
-          return b;
-        };
+        // Handle horizontal flipping
+        if (isHorizontallyFlipped) {
+          auto reverse = [](unsigned char b) {
+            b = (b & 0xF0) >> 4 | (b & 0x0F) << 4;
+            b = (b & 0xCC) >> 2 | (b & 0x33) << 2;
+            b = (b & 0xAA) >> 1 | (b & 0x55) << 1;
+            return b;
+          };
 
-        if (sprite.attrib & 0x40) {
           sprite_lo = reverse(sprite_lo);
           sprite_hi = reverse(sprite_hi);
         }
+
         sprite_shift_reg_lo[i] = sprite_lo;
         sprite_shift_reg_hi[i] = sprite_hi;
       }
     }
+
     if (cycles == 338 || cycles == 340) {
       // superflous NT read
       next_bg_tile_id = ppuRead(0x2000 | (v_reg.reg & 0x0FFF));
@@ -659,20 +634,24 @@ void NedNes::Ned2C02::clock() {
 
       for (int i = 0; i < spriteCount; i++) {
 
-        uint8_t lo, hi;
+        if (scanlineSprites[i].x == 0) {
+          uint8_t lo, hi;
 
-        lo = (sprite_shift_reg_lo[i] & 0x80) > 0;
-        hi = (sprite_shift_reg_hi[i] & 0x80) > 0;
+          lo = (sprite_shift_reg_lo[i] & 0x80) > 0;
+          hi = (sprite_shift_reg_hi[i] & 0x80) > 0;
 
-        /* printf("\n"); */
-        fg_pixel = (hi << 1) | lo;
+          fg_pixel = (hi << 1) | lo;
 
-        fg_palette = (scanlineSprites[i].attrib & 0x03) + 0x04;
+          fg_palette = (scanlineSprites[i].attrib & 0x03) + 0x04;
 
-        fg_priority = (scanlineSprites[i].attrib & 0x20) == 0;
+          fg_priority = (scanlineSprites[i].attrib & 0x20) == 0;
 
-        if (fg_pixel != 0) {
-          break;
+          if (fg_pixel != 0) {
+            if (i == 0) {
+              spriteZeroRendered = true;
+            }
+            break;
+          }
         }
       }
     }
@@ -705,6 +684,21 @@ void NedNes::Ned2C02::clock() {
       } else {
         pixel = bg_pixel;
         palette = bg_palette;
+      }
+
+      if (spriteZeroPossible && spriteZeroRendered) {
+        if (PPUMASK.bits.sprite_enable && PPUMASK.bits.bg_enable) {
+          if (!(PPUMASK.bits.bg_left_enable ||
+                PPUMASK.bits.sprite_left_enable)) {
+            if (cycles >= 8 && cycles <= 257) {
+              PPUSTATUS.bits.sprite_hit = 1;
+            }
+          } else {
+            if (cycles >= 1 && cycles <= 257) {
+              PPUSTATUS.bits.sprite_hit = 1;
+            }
+          }
+        }
       }
     }
     if (scrSurface) {

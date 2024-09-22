@@ -28,6 +28,7 @@ public:
   void connectCpu(std::shared_ptr<Ned6502>);
   void connectPpu(std::shared_ptr<Ned2C02>);
   void connectCartridge(std::shared_ptr<NedCartrdige>);
+  void setState(int n, uint8_t state);
   void connectJoypad(int n, std::shared_ptr<NedJoypad>);
   std::shared_ptr<Ned6502> cpu = nullptr;
   std::shared_ptr<Ned2C02> ppu = nullptr;

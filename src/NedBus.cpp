@@ -112,6 +112,14 @@ void NedNes::NedBus::Press(int n, JOYPAD_BUTTONS btn) {
     pad->Press(btn);
   }
 }
+void NedNes::NedBus::setState(int n, uint8_t state) {
+  n %= 2;
+
+  auto pad = joypads[n];
+  if (pad) {
+    pad->setState(state);
+  }
+}
 void NedNes::NedBus::Release(int n, JOYPAD_BUTTONS btn) {
   n %= 2;
 
