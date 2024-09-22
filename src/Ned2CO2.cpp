@@ -2,6 +2,7 @@
 #include <SDL2/SDL_render.h>
 #include <SDL2/SDL_surface.h>
 #include <cstdio>
+#include <cstring>
 #define _CRT_SECURE_NO_WARNINGS
 #include "../include/Ned2CO2.h"
 #include <cstdint>
@@ -69,15 +70,16 @@ uint8_t NedNes::Ned2C02::cpuRead(uint16_t addr) {
 
   case 0x03: {
     // OAM Address Register
+
     break;
   }
   case 0x04: {
     // OAM Data Register
+    data = pOAM[addr];
     break;
   }
   case 0x05: {
     // PPU Scroll register
-
     break;
   }
   case 0x06: {
@@ -127,10 +129,12 @@ void NedNes::Ned2C02::cpuWrite(uint16_t addr, uint8_t data) {
 
   case 0x03: {
     // OAM Address Register
+    oam_addr = data;
     break;
   }
   case 0x04: {
     // OAM Data Register
+    pOAM[oam_addr] = data;
     break;
   }
   case 0x05: {
@@ -367,6 +371,24 @@ void NedNes::Ned2C02::clock() {
       bg_attr_shift_reg_lo <<= 1;
       bg_attr_shift_reg_hi <<= 1;
     }
+    if (PPUMASK.bits.sprite_enable) {
+      // shifting time!!
+      //
+
+      if (cycles >= 1 && cycles <= 257) {
+        for (int i = 0; i < spriteCount; i++) {
+
+          oamEntry sprite = scanlineSprites[i];
+
+          if (sprite.x > 0) {
+            sprite.x -= 1;
+          } else {
+            sprite_shift_reg_lo[i] <<= 1;
+            sprite_shift_reg_hi[i] <<= 1;
+          }
+        }
+      }
+    }
   };
   auto LoadShiftRegisters = [&]() {
     bg_tile_shift_reg_lo = (bg_tile_shift_reg_lo & 0xFF00) | (next_bg_tile_lsb);
@@ -389,6 +411,12 @@ void NedNes::Ned2C02::clock() {
       PPUSTATUS.bits.vblank = 0x00;
       PPUSTATUS.bits.sprite_overflow = 0x00;
       PPUSTATUS.bits.sprite_hit = 0x00;
+
+      for (int i = 0; i < 8; i++) {
+        // resetting the shifters
+        sprite_shift_reg_lo[i] = 0x00;
+        sprite_shift_reg_hi[i] = 0x00;
+      }
     }
 
     // NOTE: i think cycles should start from 1 instead of 2
@@ -460,7 +488,123 @@ void NedNes::Ned2C02::clock() {
       LoadShiftRegisters();
       TransferX();
     }
+    if (cycles == 257 && scanlines >= 0) {
+      // sprite evaluation stage
 
+      // clearing the scanlineSprites
+      //
+      memset(scanlineSprites, 0xFF, 8 * sizeof(oamEntry));
+      spriteCount = 0;
+      for (int i = 0; i < 8; i++) {
+        // resetting the shifters
+        sprite_shift_reg_lo[i] = 0x00;
+        sprite_shift_reg_hi[i] = 0x00;
+      }
+      uint8_t i = 0;
+
+      while (i < 64 && spriteCount < 9) {
+
+        oamEntry sprite = oam[i];
+        int8_t spriteHeight = (PPUCTRL.bits.sprite_height) ? 16 : 8;
+
+        int16_t diff = scanlines - (int16_t)(sprite.y);
+
+        if (diff >= 0 && diff < spriteHeight) {
+          // passes the evaluation
+
+          if (spriteCount < 8) {
+            scanlineSprites[spriteCount] = sprite;
+          }
+          spriteCount++;
+        }
+        i++;
+      }
+
+      if (spriteCount >= 8) {
+        // sprite overflow has occured
+        PPUSTATUS.bits.sprite_overflow = 1;
+      }
+    }
+
+    if (cycles == 340) {
+      // at the end cycle of the current scanline, we will update the shifters
+      //
+
+      for (uint8_t i = 0; i < spriteCount; i++) {
+        uint8_t sprite_addr_lo, sprite_addr_hi;
+        uint8_t sprite_lo, sprite_hi;
+        oamEntry sprite = scanlineSprites[i];
+
+        // checking for sprite height
+
+        if (!PPUCTRL.bits.sprite_height) {
+          // the sprite is 8x8 size
+
+          // checking for sprites vertical origentation
+          //
+          if ((sprite.attrib & 0x80) == 0) {
+
+            sprite_addr_lo = (PPUCTRL.bits.sprite_select << 12) |
+                             (sprite.id << 4) | (scanlines - sprite.y);
+          } else {
+
+            // flipping vertically
+            sprite_addr_lo = (PPUCTRL.bits.sprite_select << 12) |
+                             (sprite.id << 4) | (7 - scanlines - sprite.y);
+          }
+        } else {
+          // the sprite is 8x16 size
+          // check for virtical orientation
+          if ((sprite.attrib & 0x80) == 0x0) {
+
+            if (scanlines - sprite.y < 8) {
+              // top half of the sprite
+              sprite_addr_lo = ((PPUCTRL.bits.sprite_select & 0x01) << 12) |
+                               ((sprite.id & 0xFE) << 4) |
+                               ((scanlines - sprite.y) & 0x07);
+            } else {
+              // bottom half of the sprite
+              sprite_addr_lo = ((PPUCTRL.bits.sprite_select & 0x01) << 12) |
+                               (((sprite.id & 0xFE) + 1) << 4) |
+                               ((scanlines - sprite.y) & 0x07);
+            }
+          } else {
+            // vertically flipped
+            if (scanlines - sprite.y < 8) {
+              sprite_addr_lo = ((PPUCTRL.bits.sprite_select & 0x01) << 12) |
+                               (((sprite.id & 0xFE) + 1) << 4) |
+                               ((7 - scanlines - sprite.y) & 0x07);
+
+            } else {
+
+              sprite_addr_lo = ((PPUCTRL.bits.sprite_select & 0x01) << 12) |
+                               ((sprite.id & 0xFE) << 4) |
+                               ((7 - scanlines - sprite.y) & 0x07);
+            }
+          }
+        }
+
+        sprite_addr_hi = sprite_addr_lo + 8;
+
+        sprite_lo = ppuRead(sprite_addr_lo);
+        sprite_hi = ppuRead(sprite_addr_hi);
+
+        // check for horizontal origentation and flip
+        auto reverse = [&](unsigned char b) {
+          b = (b & 0xF0) >> 4 | (b & 0x0F) << 4;
+          b = (b & 0xCC) >> 2 | (b & 0x33) << 2;
+          b = (b & 0xAA) >> 1 | (b & 0x55) << 1;
+          return b;
+        };
+
+        if (sprite.attrib & 0x40) {
+          sprite_lo = reverse(sprite_lo);
+          sprite_hi = reverse(sprite_hi);
+        }
+        sprite_shift_reg_lo[i] = sprite_lo;
+        sprite_shift_reg_hi[i] = sprite_hi;
+      }
+    }
     if (cycles == 338 || cycles == 340) {
       // superflous NT read
       next_bg_tile_id = ppuRead(0x2000 | (v_reg.reg & 0x0FFF));
@@ -487,9 +631,19 @@ void NedNes::Ned2C02::clock() {
 
   if ((cycles >= 1 && cycles <= 256 && scanlines >= 0 && scanlines < 240)) {
 
+    uint16_t bg_pixel = 0x00;
+    uint16_t bg_palette = 0x00;
+
+    uint16_t fg_pixel = 0x00;
+    uint16_t fg_palette = 0x00;
+    uint16_t fg_priority = 0x00;
+
+    // Final pixel and palette values
+    uint8_t pixel = 0x00;
+    uint8_t palette = 0x00;
+
+    // background========================================
     if (PPUMASK.bits.bg_enable) {
-      uint16_t bg_pixel;
-      uint16_t bg_palette;
       uint16_t mutx = 0x8000 >> fine_x;
 
       bg_pixel = ((bg_tile_shift_reg_hi & mutx) > 0) << 1 |
@@ -497,11 +651,66 @@ void NedNes::Ned2C02::clock() {
 
       bg_palette = ((bg_attr_shift_reg_hi & mutx) > 0) << 1 |
                    ((bg_attr_shift_reg_lo & mutx) > 0);
-      if (scrSurface) {
-        SET_PIXEL(scrSurface->pixels, cycles - 1, scanlines, scrSurface->pitch,
+    }
 
-                  getColorFromPalette(bg_palette, bg_pixel));
+    // foreground ===========================
+
+    if (PPUMASK.bits.sprite_enable) {
+
+      for (int i = 0; i < spriteCount; i++) {
+
+        uint8_t lo, hi;
+
+        lo = (sprite_shift_reg_lo[i] & 0x80) > 0;
+        hi = (sprite_shift_reg_hi[i] & 0x80) > 0;
+
+        /* printf("\n"); */
+        fg_pixel = (hi << 1) | lo;
+
+        fg_palette = (scanlineSprites[i].attrib & 0x03) + 0x04;
+
+        fg_priority = (scanlineSprites[i].attrib & 0x20) == 0;
+
+        if (fg_pixel != 0) {
+          break;
+        }
       }
+    }
+
+    // comparing transparancy of the background and the sprite
+    //
+
+    if (fg_pixel == 0 && bg_pixel == 0) {
+
+      // both are transparant
+      pixel = 0x00;
+      palette = 0x00;
+    } else if (fg_pixel > 0 && bg_pixel == 0) {
+
+      // background is transparent
+      pixel = fg_pixel;
+      palette = fg_palette;
+    }
+
+    else if (fg_pixel == 0 && bg_pixel > 0) {
+      pixel = bg_pixel;
+      palette = bg_palette;
+    }
+
+    else if (fg_pixel > 0 && bg_pixel > 0) {
+      // priority fight
+      if (fg_priority) {
+        pixel = fg_pixel;
+        palette = fg_palette;
+      } else {
+        pixel = bg_pixel;
+        palette = bg_palette;
+      }
+    }
+    if (scrSurface) {
+      SET_PIXEL(scrSurface->pixels, cycles - 1, scanlines, scrSurface->pitch,
+
+                getColorFromPalette(palette, pixel));
     }
   }
 

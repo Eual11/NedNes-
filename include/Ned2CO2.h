@@ -113,6 +113,8 @@ public:
   loopy_reg t_reg;
 
   uint8_t fine_x = 0x00;
+
+  uint8_t oam_addr = 0x00;
   // ppu clock
   void clock();
 
@@ -133,10 +135,27 @@ public:
   bool isFrameComplete() { return frameComplete; };
 
   void reset();
+  uint8_t *pOAM = (uint8_t *)(oam);
+  struct oamEntry {
+    uint8_t y;
+    uint8_t id;
+    uint8_t attrib;
+    uint8_t x;
+  };
+
+  // sprite stuff
+  //
+  int spriteCount = 0;
+  oamEntry scanlineSprites[8];
+
+  uint8_t sprite_shift_reg_lo[8];
+  uint8_t sprite_shift_reg_hi[8];
 
 private:
   int cycles = 0;
   int scanlines = 0;
+
+  oamEntry oam[64];
 
   unsigned int clockCount = 0;
   bool frameComplete = false;

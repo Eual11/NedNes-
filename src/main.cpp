@@ -177,6 +177,22 @@ int main(int argc, char **argv) {
 
       col = {0xff, 0xff, 0xff, 0x00};
     }
+    NedNes::Ned2C02::oamEntry *oam =
+        (NedNes::Ned2C02::oamEntry *)EmuBus->ppu->pOAM;
+
+    R.x = 400;
+    R.h = 0x00;
+    auto toInt = [&](int s) { return std::to_string(s); };
+    for (int i = 0; i < 5; i++) {
+      auto sprite = oam[i];
+      std::string entry = toHex(i) + " " + "(" + toInt(sprite.x) + ", " +
+                          toInt(sprite.y) + ") " + toHex(sprite.id) + " " +
+                          toHex(sprite.attrib);
+      SDL_Rect r = DrawText(gRenderer, global_font, entry, 400, R.h + 10, col);
+      R.h += r.h;
+
+      col = {0xff, 0xff, 0xff, 0x00};
+    }
     SDL_RenderCopy(gRenderer, EmuBus->ppu->getScreenTexture(), nullptr,
                    &scrArea);
     SDL_RenderCopy(gRenderer, EmuBus->ppu->getPatternTable(0, p_idx), nullptr,

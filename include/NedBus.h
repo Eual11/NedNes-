@@ -4,6 +4,7 @@
 #include "NedCartridge.h"
 #include "NedJoypad.h"
 #include <array>
+#include <cstdint>
 #include <memory>
 #include <stdint.h>
 #include <vector>
@@ -39,5 +40,12 @@ public:
   void clock();
   void reset();
   uint32_t SystemClock = 0;
+
+  // used for dma
+  bool dma_transfer = false;
+  bool dma_pre = true;
+  uint8_t dma_page = 0x00;
+  uint8_t dma_addr = 0x00;
+  uint8_t dma_data = 0x00;
 };
 } // namespace NedNes

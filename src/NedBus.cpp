@@ -37,6 +37,13 @@ void NedNes::NedBus::cpuWrite(uint16_t addr, uint8_t val) {
     ram[addr & 0x7FF] = val;
   } else if (addr >= 0x2000 && addr <= 0x3FFF) {
     ppu->cpuWrite(addr & 0x2007, val);
+  } else if (addr == 0x4014) {
+
+    // writing to the oamdma register initiates DMA
+    dma_transfer = true;
+    dma_page = val;
+    dma_addr = 0x00;
+
   } else if (addr == 0x4016 || addr == 0x4017) {
     auto pad = joypads[addr - 0x4016];
 
@@ -57,7 +64,37 @@ void NedNes::NedBus::clock() {
 
   ppu->clock();
   if (SystemClock % 3 == 0) {
-    cpu->clock();
+
+    // if there is dma transfer suspend the cpu clock
+    if (dma_transfer) {
+
+      if (dma_pre) {
+        // the dma is synchronized with the cpu clock so it takes a cycle to
+        // start reading
+        if (SystemClock % 2 == 1)
+          dma_pre = false;
+      } else {
+
+        // we read data from memeory during even cycles
+        if (SystemClock % 2 == 0) {
+          dma_data = cpuRead(((uint16_t)(dma_page) << 8) | dma_addr);
+
+        } else {
+          // write them on odd cycles
+          ppu->pOAM[dma_addr] = dma_data;
+          dma_addr++;
+          dma_data &= 0xFF;
+          if (dma_addr == 0x00) {
+            dma_pre = true;
+            dma_transfer = false;
+          }
+        }
+      }
+
+    } else {
+      // if not, go on cpu, RUN
+      cpu->clock();
+    }
   }
   if (ppu->nmi) {
     /* printf("Non Maskable intrupt\n"); */
