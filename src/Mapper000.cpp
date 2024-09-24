@@ -1,5 +1,5 @@
 #include "../include/Mapper000.h"
-#include <stdio.h>
+#include <cstdint>
 
 namespace NedNes {
 
@@ -9,7 +9,8 @@ Mapper000::Mapper000(unsigned int npgr, unsigned int nchr)
   nCHRBanks = nchr;
 }
 
-bool Mapper000::cpuMapReadAddress(uint16_t addr, uint32_t &mapped) {
+bool Mapper000::cpuMapReadAddress(uint16_t addr, uint32_t &mapped,
+                                  uint8_t &data) {
 
   if (addr >= 0x8000 && addr <= 0xFFFF) {
     mapped = nPGRBanks == 1 ? (addr & 0x3FFF) : (addr & 0x7FFF);
@@ -18,7 +19,8 @@ bool Mapper000::cpuMapReadAddress(uint16_t addr, uint32_t &mapped) {
   return false;
 }
 
-bool Mapper000::cpuMapWriteAddress(uint16_t addr, uint32_t &mapped) {
+bool Mapper000::cpuMapWriteAddress(uint16_t addr, uint32_t &mapped,
+                                   uint8_t data) {
 
   if (addr >= 0x8000 && addr <= 0xFFFF) {
     mapped = nPGRBanks == 1 ? (addr & 0x3FFF) : (addr & 0x7FFF);
@@ -42,6 +44,9 @@ bool Mapper000::ppuMapReadAddress(uint16_t addr, uint32_t &mapped) {
     return true;
   }
   return false;
+}
+void Mapper000::reset() {
+  // do nothing
 }
 
 }; // namespace NedNes

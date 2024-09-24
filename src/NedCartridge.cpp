@@ -1,5 +1,6 @@
 #include "../include/NedCartridge.h"
 #include "../include/Mapper000.h"
+#include "../include/Mapper002.h"
 #include <fstream>
 #include <iostream>
 #include <memory>
@@ -51,6 +52,10 @@ NedCartrdige::NedCartrdige(std::string filename) {
         mMapper = std::make_shared<Mapper000>(nPGRBanks, nCHRBanks);
         break;
       }
+      case 0x02: {
+        mMapper = std::make_shared<Mapper002>(nPGRBanks, nCHRBanks);
+        break;
+      }
 
       default: {
         fprintf(stderr,
@@ -81,10 +86,14 @@ bool NedCartrdige::cpuRead(uint16_t addr, uint8_t &data) {
   // mapping the cpu address to the phsical program memory address in the room
   // using the mapper
   uint32_t mapped_addr;
-  if (mMapper->cpuMapReadAddress(addr, mapped_addr)) {
+  if (mMapper->cpuMapReadAddress(addr, mapped_addr, data)) {
     // reading from the program memory
-    data = PGRMemory[mapped_addr];
+    if (mapped_addr < PGRMemory.size()) {
+      data = PGRMemory[mapped_addr];
+      return true;
+    }
   }
+
   return false;
 }
 
@@ -93,9 +102,12 @@ bool NedCartrdige::cpuWrite(uint16_t addr, uint8_t data) {
   // mapping cpu address to the physical memoery address in the rom
   uint32_t mapped_addr;
 
-  if (mMapper->cpuMapWriteAddress(addr, mapped_addr)) {
-    PGRMemory[mapped_addr] = data;
-    return true;
+  if (mMapper->cpuMapWriteAddress(addr, mapped_addr, data)) {
+
+    if (mapped_addr < PGRMemory.size()) {
+      PGRMemory[mapped_addr] = data;
+      return true;
+    }
   }
   return false;
 }
@@ -104,8 +116,10 @@ bool NedCartrdige::ppuRead(uint16_t addr, uint8_t &data) {
   uint32_t mapped_addr;
   if (mMapper->ppuMapReadAddress(addr, mapped_addr)) {
 
-    data = CHRMemory[mapped_addr];
-    return true;
+    if (mapped_addr < CHRMemory.size()) {
+      data = CHRMemory[mapped_addr];
+      return true;
+    }
   }
   return false;
 }
@@ -114,8 +128,11 @@ bool NedCartrdige::ppuWrite(uint16_t addr, uint8_t data) {
   uint32_t mapped_addr;
 
   if (mMapper->ppuMapWriteAddress(addr, mapped_addr)) {
-    CHRMemory[mapped_addr] = data;
-    return true;
+
+    if (mapped_addr < CHRMemory.size()) {
+      CHRMemory[mapped_addr] = data;
+      return true;
+    }
   }
   return false;
 }

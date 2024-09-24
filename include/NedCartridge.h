@@ -10,6 +10,7 @@
 
 enum Mirror {
 
+  HARDWARE,
   HORIZONTAL,
   VERTICAL,
   ONESCREEN_LO,

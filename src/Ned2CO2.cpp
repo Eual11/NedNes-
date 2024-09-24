@@ -632,6 +632,7 @@ void NedNes::Ned2C02::clock() {
 
     if (PPUMASK.bits.sprite_enable) {
 
+      spriteZeroRendered = false;
       for (int i = 0; i < spriteCount; i++) {
 
         if (scanlineSprites[i].x == 0) {
@@ -690,7 +691,7 @@ void NedNes::Ned2C02::clock() {
         if (PPUMASK.bits.sprite_enable && PPUMASK.bits.bg_enable) {
           if (!(PPUMASK.bits.bg_left_enable ||
                 PPUMASK.bits.sprite_left_enable)) {
-            if (cycles >= 8 && cycles <= 257) {
+            if (cycles >= 9 && cycles <= 257) {
               PPUSTATUS.bits.sprite_hit = 1;
             }
           } else {

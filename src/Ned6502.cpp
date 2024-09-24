@@ -19,6 +19,7 @@ void Ned6502::write(uint16_t addr, uint8_t val) { bus->cpuWrite(addr, val); }
 void Ned6502::connectBus(std::shared_ptr<NedBus> _bus) { bus = _bus; }
 
 uint8_t Ned6502::fetch(uint16_t addr) {
+
   if (opcodes[opcode].addr_mode != IMPLIED &&
       opcodes[opcode].addr_mode != ACCUMULATOR) {
     fetched = read(addr);
@@ -27,7 +28,6 @@ uint8_t Ned6502::fetch(uint16_t addr) {
 }
 
 void Ned6502::clock() {
-
   if (cycles == 0) {
     opcode = read(PC++);
 

@@ -61,7 +61,6 @@ void NedNes::NedBus::connectCartridge(std::shared_ptr<NedCartrdige> _cart) {
   this->cart = _cart;
 }
 void NedNes::NedBus::clock() {
-
   ppu->clock();
   if (SystemClock % 3 == 0) {
 

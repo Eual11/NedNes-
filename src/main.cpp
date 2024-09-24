@@ -38,8 +38,8 @@ int main(int argc, char **argv) {
 
   // TODO: better controllers
   init();
-  auto cart = std::make_shared<NedNes::NedCartrdige>(
-      "../rom/games/Super Mario Bros (E).nes");
+  auto cart =
+      std::make_shared<NedNes::NedCartrdige>("../rom/games/Contra (U).nes");
 
   auto joypad1 = std::make_shared<NedNes::NedJoypad>();
   // setting up nednes bus
@@ -75,7 +75,6 @@ int main(int argc, char **argv) {
   };
   SDL_Event e;
   while (!quit) {
-
     while (SDL_PollEvent(&e)) {
       if (e.type == SDL_QUIT) {
         quit = true;
@@ -170,17 +169,15 @@ int main(int argc, char **argv) {
     //
     //
     // Drawing disassembled instructions
-    /* disMap = EmuBus->cpu->disassemble(4); */
-    /* col = {0x04, 0x09c, 0xf4, 0xff}; */
-    /* for (auto &d : disMap) { */
-    /*   std::string instr = toHex(d.first) + " " + d.second; */
-    /*   SDL_Rect r = DrawText(gRenderer, global_font, instr, WINDOW_WIDTH -
-     * 350, */
-    /*                         R.h + 10, col); */
-    /*   R.h += r.h; */
-    /**/
-    /*   col = {0xff, 0xff, 0xff, 0x00}; */
-    /* } */
+    disMap = EmuBus->cpu->disassemble(4);
+    col = {0x04, 0x09c, 0xf4, 0xff};
+    for (auto &d : disMap) {
+      std::string instr = toHex(d.first) + " " + d.second;
+      SDL_Rect r = DrawText(gRenderer, global_font, instr, WINDOW_WIDTH - 350,
+                            R.h + 10, col);
+      R.h += r.h;
+      col = {0xff, 0xff, 0xff, 0x00};
+    }
     NedNes::Ned2C02::oamEntry *oam =
         (NedNes::Ned2C02::oamEntry *)EmuBus->ppu->pOAM;
 
