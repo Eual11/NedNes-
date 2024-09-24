@@ -4,6 +4,8 @@
 - the rendering works a bit but its all nuts, it still not correct
 - i guess the problem is with loopy registers and address fetching, i don't think the correct namespaces are even addressed in case of nes test for example, my emulator LITERALLY fails miserably even though the task was as simple as reading each tile from nametable and displaying it on screen
 - the problem was how i set up the loopy register (because i didn't understand bit fields) the size of bit fields was 8 bit meanwhile loopy registers should have a size of 16 bits
-- what is missing now is in other emulators i could see super mario bros editing the palette to make the coin appear shining, but mine isn't doing that 
-- it fails miserably at scanlines test
-- there are missing pixels in the coin at the top of mario
+- what is missing now is in other emulators i could see super mario bros editing the palette to make the coin appear shining, but mine isn't doing that  [Fixed ]
+- it fails miserably at scanlines test [Fixed]
+- there are missing pixels in the coin at the top of mario 
+- moreover when i jump high enough to the scoreboard, it starts glitching [Fixed]
+- Blard SpriteRam Test fails with error 02
