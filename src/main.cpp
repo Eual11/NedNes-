@@ -39,7 +39,7 @@ int main(int argc, char **argv) {
   // TODO: better controllers
   init();
   auto cart =
-      std::make_shared<NedNes::NedCartrdige>("../rom/games/Contra (U).nes");
+      std::make_shared<NedNes::NedCartrdige>("../rom/games/Mega Man (USA).nes");
 
   auto joypad1 = std::make_shared<NedNes::NedJoypad>();
   // setting up nednes bus
@@ -246,8 +246,7 @@ void init() {
     exit(1);
   }
 
-  gRenderer = SDL_CreateRenderer(
-      gWindow, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+  gRenderer = SDL_CreateRenderer(gWindow, -1, SDL_RENDERER_ACCELERATED);
 
   if (!gRenderer) {
     fprintf(stderr, "Couldn't Create Renderer: %s\n", SDL_GetError());

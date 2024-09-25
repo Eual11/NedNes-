@@ -262,7 +262,7 @@ void Ned6502::nmi() {
 // INSTRUCTIONS
 
 uint8_t Ned6502::XXX() {
-  fprintf(stderr, "Not Implemented\n");
+  /* fprintf(stderr, "Not Implemented\n"); */
   return 0x00;
 }
 

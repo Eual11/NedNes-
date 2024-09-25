@@ -12,15 +12,15 @@ Mapper002::Mapper002(unsigned int npgr, unsigned int nchr)
 
 bool Mapper002::cpuMapReadAddress(uint16_t addr, uint32_t &mapped_addr,
                                   uint8_t &data) {
-
   // switchable PGR banks
-  //
   if (addr >= 0x8000 && addr <= 0xBFFF) {
     mapped_addr = (uint32_t)addrLwoffset * 0x4000 + (addr & 0x3FFF);
+    return true;
   }
   if (addr >= 0xC000 && addr <= 0xFFFF) {
     // Fixed bank
-    mapped_addr = (uint32_t)addrHiOffset * 0x4000 + (addr * 0x3FFF);
+    mapped_addr = (uint32_t)addrHiOffset * 0x4000 + (addr & 0x3FFF);
+
     return true;
   }
 
@@ -30,7 +30,6 @@ bool Mapper002::cpuMapWriteAddress(uint16_t addr, uint32_t &mapped_addr,
                                    uint8_t data) {
   if (addr >= 0x8000 && addr <= 0xFFFF) {
     addrLwoffset = data & 0xF;
-    return true;
   }
   return false;
 }
