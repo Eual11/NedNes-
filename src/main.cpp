@@ -38,8 +38,8 @@ int main(int argc, char **argv) {
 
   // TODO: better controllers
   init();
-  auto cart =
-      std::make_shared<NedNes::NedCartrdige>("../rom/games/Mega Man (USA).nes");
+  auto cart = std::make_shared<NedNes::NedCartrdige>(
+      "../rom/games/Arkista's Ring (U) [!].nes");
 
   auto joypad1 = std::make_shared<NedNes::NedJoypad>();
   // setting up nednes bus

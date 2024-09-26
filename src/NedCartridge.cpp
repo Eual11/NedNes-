@@ -1,6 +1,7 @@
 #include "../include/NedCartridge.h"
 #include "../include/Mapper000.h"
 #include "../include/Mapper002.h"
+#include "../include/Mapper003.h"
 #include <fstream>
 #include <iostream>
 #include <memory>
@@ -54,6 +55,10 @@ NedCartrdige::NedCartrdige(std::string filename) {
       }
       case 0x02: {
         mMapper = std::make_shared<Mapper002>(nPGRBanks, nCHRBanks);
+        break;
+      }
+      case 0x03: {
+        mMapper = std::make_shared<Mapper003>(nPGRBanks, nCHRBanks);
         break;
       }
 
