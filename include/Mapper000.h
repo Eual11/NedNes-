@@ -2,6 +2,7 @@
 #define __MAPPER000__
 
 #include "NedMapper.h"
+
 #include <cstdint>
 namespace NedNes {
 class Mapper000 : public NedMapper {

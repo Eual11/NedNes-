@@ -38,8 +38,8 @@ int main(int argc, char **argv) {
 
   // TODO: better controllers
   init();
-  auto cart = std::make_shared<NedNes::NedCartrdige>(
-      "../rom/games/Arkista's Ring (U) [!].nes");
+  auto cart =
+      std::make_shared<NedNes::NedCartrdige>("../rom/games/Mega Man 2 (U).nes");
 
   auto joypad1 = std::make_shared<NedNes::NedJoypad>();
   // setting up nednes bus
@@ -197,10 +197,11 @@ int main(int argc, char **argv) {
     /*   col = {0xff, 0xff, 0xff, 0x00}; */
     /* } */
 
-    SDL_RenderCopy(
-        gRenderer, EmuBus->ppu->getScreenTexture(), nullptr,
-        &scrArea); /* SDL_RenderCopy(gRenderer, EmuBus->ppu->getPatternTable(0,
-                    * p_idx), nullptr, */
+    SDL_RenderCopy(gRenderer, EmuBus->ppu->getScreenTexture(), nullptr,
+                   &scrArea);
+
+    /* SDL_RenderCopy(gRenderer, EmuBus->ppu->getPatternTable(0,
+     * p_idx), nullptr, */
     /*                &patternTableArea1); */
     /* SDL_RenderCopy(gRenderer, EmuBus->ppu->getPatternTable(1, p_idx),
      * nullptr, */
@@ -246,7 +247,8 @@ void init() {
     exit(1);
   }
 
-  gRenderer = SDL_CreateRenderer(gWindow, -1, SDL_RENDERER_ACCELERATED);
+  gRenderer = SDL_CreateRenderer(
+      gWindow, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
 
   if (!gRenderer) {
     fprintf(stderr, "Couldn't Create Renderer: %s\n", SDL_GetError());

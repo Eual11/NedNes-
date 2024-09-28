@@ -8,14 +8,6 @@
 #include <stdint.h>
 #include <vector>
 
-enum Mirror {
-
-  HARDWARE,
-  HORIZONTAL,
-  VERTICAL,
-  ONESCREEN_LO,
-  ONESCREEN_HI,
-};
 namespace NedNes {
 class NedCartrdige {
 
@@ -42,6 +34,14 @@ public:
 
   bool ppuRead(uint16_t addr, uint8_t &data);
   bool ppuWrite(uint16_t addr, uint8_t data);
+
+  Mirror mirror() {
+    if (mMapper) {
+      return mMapper->getMirror();
+    }
+    //this shouln't happen but assuming it's horizintally mirrored seems better
+    return HORIZONTAL;
+  }
 };
 
 }; // namespace NedNes

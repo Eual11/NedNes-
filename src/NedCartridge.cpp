@@ -1,5 +1,6 @@
 #include "../include/NedCartridge.h"
 #include "../include/Mapper000.h"
+#include "../include/Mapper001.h"
 #include "../include/Mapper002.h"
 #include "../include/Mapper003.h"
 #include <fstream>
@@ -53,6 +54,10 @@ NedCartrdige::NedCartrdige(std::string filename) {
         mMapper = std::make_shared<Mapper000>(nPGRBanks, nCHRBanks);
         break;
       }
+      case 0x01: {
+        mMapper = std::make_shared<Mapper001>(nPGRBanks, nCHRBanks);
+        break;
+      }
       case 0x02: {
         mMapper = std::make_shared<Mapper002>(nPGRBanks, nCHRBanks);
         break;
@@ -79,6 +84,7 @@ NedCartrdige::NedCartrdige(std::string filename) {
       rom.read((char *)CHRMemory.data(), CHRMemory.size());
 
       valid = true;
+      mMapper->setMirror(mirrorType);
     }
     rom.close();
   }
@@ -90,9 +96,12 @@ bool NedCartrdige::imageValid() { return valid; }
 bool NedCartrdige::cpuRead(uint16_t addr, uint8_t &data) {
   // mapping the cpu address to the phsical program memory address in the room
   // using the mapper
-  uint32_t mapped_addr;
+  uint32_t mapped_addr = 0x00;
   if (mMapper->cpuMapReadAddress(addr, mapped_addr, data)) {
     // reading from the program memory
+    if (mapped_addr == 0xFFFFFFFF) {
+      return true;
+    }
     if (mapped_addr < PGRMemory.size()) {
       data = PGRMemory[mapped_addr];
       return true;
@@ -105,10 +114,12 @@ bool NedCartrdige::cpuRead(uint16_t addr, uint8_t &data) {
 bool NedCartrdige::cpuWrite(uint16_t addr, uint8_t data) {
 
   // mapping cpu address to the physical memoery address in the rom
-  uint32_t mapped_addr;
+  uint32_t mapped_addr = 0x00;
 
   if (mMapper->cpuMapWriteAddress(addr, mapped_addr, data)) {
 
+    if (mapped_addr == 0xFFFFFFFF)
+      return true;
     if (mapped_addr < PGRMemory.size()) {
       PGRMemory[mapped_addr] = data;
       return true;
@@ -118,7 +129,7 @@ bool NedCartrdige::cpuWrite(uint16_t addr, uint8_t data) {
 }
 
 bool NedCartrdige::ppuRead(uint16_t addr, uint8_t &data) {
-  uint32_t mapped_addr;
+  uint32_t mapped_addr = 0x00;
   if (mMapper->ppuMapReadAddress(addr, mapped_addr)) {
 
     if (mapped_addr < CHRMemory.size()) {
@@ -130,7 +141,7 @@ bool NedCartrdige::ppuRead(uint16_t addr, uint8_t &data) {
 }
 bool NedCartrdige::ppuWrite(uint16_t addr, uint8_t data) {
 
-  uint32_t mapped_addr;
+  uint32_t mapped_addr = 0x00;
 
   if (mMapper->ppuMapWriteAddress(addr, mapped_addr)) {
 

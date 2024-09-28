@@ -198,7 +198,7 @@ uint8_t NedNes::Ned2C02::ppuRead(uint16_t addr) {
 
     addr = addr & 0x0FFF;
 
-    switch (cart->mirrorType) {
+    switch (cart->mirror()) {
     case HORIZONTAL: {
       if (addr <= 0x7FF) {
         // mapped to the nametable 1
@@ -217,6 +217,16 @@ uint8_t NedNes::Ned2C02::ppuRead(uint16_t addr) {
                  (addr >= 0x0C00 && addr <= 0x0FFF)) {
         data = nameTable[1][addr & 0x03FF];
       }
+      break;
+    }
+    case ONESCREEN_LO: {
+      // Both 0x2000 - 0x2FFF mapped to NameTable[0]
+      data = nameTable[0][addr & 0x3FF];
+      break;
+    }
+    case ONESCREEN_HI: {
+      // Both 0x2000 - 0x2FFF mapped to NameTable[1]
+      data = nameTable[1][addr & 0x3FF];
       break;
     }
     }
