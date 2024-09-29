@@ -91,7 +91,7 @@ uint8_t NedNes::Ned2C02::cpuRead(uint16_t addr) {
     data = buffered_data;
     buffered_data = ppuRead(v_reg.reg);
 
-    if (addr >= 0x3F00) {
+    if (v_reg.reg >= 0x3F00 && v_reg.reg < 0x3FFF) {
       // palette table doesn't rely on buffering
       data = buffered_data;
     }
@@ -243,8 +243,6 @@ uint8_t NedNes::Ned2C02::ppuRead(uint16_t addr) {
     return paletteTable[addr] & (PPUMASK.bits.greyscale ? 0x30 : 0x3F);
   }
 
-  // do something idk yet lmao
-  //
   return data;
 }
 void NedNes::Ned2C02::ppuWrite(uint16_t addr, uint8_t data) {
