@@ -39,8 +39,7 @@ int main(int argc, char **argv) {
   // TODO: better controllers
   init();
   auto cart = std::make_shared<NedNes::NedCartrdige>(
-      "../rom/tests/nes-test-roms/blargg_ppu_tests_2005.09.15b/"
-      "palette_ram.nes");
+      "../rom/tests/nes-test-roms/blargg_ppu_tests_2005.09.15b/sprite_ram.nes");
 
   auto joypad1 = std::make_shared<NedNes::NedJoypad>();
   // setting up nednes bus

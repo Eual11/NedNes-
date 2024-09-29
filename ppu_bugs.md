@@ -8,5 +8,6 @@
 - it fails miserably at scanlines test [Fixed]
 - there are missing pixels in the coin at the top of mario 
 - moreover when i jump high enough to the scoreboard, it starts glitching [Fixed]
-- Blard SpriteRam Test fails with error 02
+- Blarg SpriteRam Test fails with error 02 [Updated]
+- Blarg SpriteRam Test fails with error 07
 - There is still some problems in sprite and background priority, maybe it's spritehit zero problem

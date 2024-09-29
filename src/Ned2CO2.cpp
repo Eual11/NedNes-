@@ -74,7 +74,7 @@ uint8_t NedNes::Ned2C02::cpuRead(uint16_t addr) {
   }
   case 0x04: {
     // OAM Data Register
-    data = pOAM[addr];
+    data = pOAM[oam_addr];
     break;
   }
   case 0x05: {
@@ -134,6 +134,7 @@ void NedNes::Ned2C02::cpuWrite(uint16_t addr, uint8_t data) {
   case 0x04: {
     // OAM Data Register
     pOAM[oam_addr] = data;
+    oam_addr += 1;
     break;
   }
   case 0x05: {
