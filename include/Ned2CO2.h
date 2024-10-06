@@ -117,6 +117,7 @@ public:
   uint8_t oam_addr = 0x00;
   // ppu clock
   void clock();
+  uint8_t getOamAddr();
 
   // connecting to cartage and BUS
 

@@ -28,6 +28,10 @@ public:
 
   void setMirror(Mirror mirror) { mirrorType = mirror; }
   Mirror getMirror() { return mirrorType; }
+  virtual bool irqState() = 0;
+
+  virtual void irqClear() = 0;
+  virtual void scanline() =0;
 
 protected:
   unsigned int nPGRBanks;

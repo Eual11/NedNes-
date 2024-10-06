@@ -46,7 +46,8 @@ public:
   bool dma_transfer = false;
   bool dma_pre = true;
   uint8_t dma_page = 0x00;
-  uint8_t dma_addr = 0x00;
+  uint16_t dma_addr = 0x00;
   uint8_t dma_data = 0x00;
+  uint16_t dma_transfered_data = 0;
 };
 } // namespace NedNes

@@ -35,11 +35,12 @@ public:
   bool ppuRead(uint16_t addr, uint8_t &data);
   bool ppuWrite(uint16_t addr, uint8_t data);
 
+  std::shared_ptr<NedMapper> getMapper() { return mMapper; }
   Mirror mirror() {
     if (mMapper) {
       return mMapper->getMirror();
     }
-    //this shouln't happen but assuming it's horizintally mirrored seems better
+    // this shouln't happen but assuming it's horizintally mirrored seems better
     return HORIZONTAL;
   }
 };
