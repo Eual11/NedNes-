@@ -17,6 +17,9 @@ public:
   bool ppuMapReadAddress(uint16_t addr, uint32_t &mapped_addr) override;
   bool ppuMapWriteAddress(uint16_t addr, uint32_t &mapped_addr) override;
   void reset() override;
+  void irqClear() override {};
+  void scanline() override {};
+  bool irqState() override { return false; }
 
 private:
   uint8_t chrAddrOffset = 0x00;

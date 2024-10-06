@@ -69,7 +69,7 @@ uint8_t NedNes::Ned2C02::cpuRead(uint16_t addr) {
 
   case 0x03: {
     // OAM Address Register
-
+    data = oam_addr;
     break;
   }
   case 0x04: {
@@ -417,6 +417,7 @@ void NedNes::Ned2C02::clock() {
     }
     if (scanlines == -1 && cycles == 1) {
       PPUSTATUS.bits.vblank = 0x00;
+
       PPUSTATUS.bits.sprite_overflow = 0x00;
       PPUSTATUS.bits.sprite_hit = 0x00;
 
@@ -525,7 +526,8 @@ void NedNes::Ned2C02::clock() {
 
       // Check for sprite overflow
       if (spriteCount > 8) {
-        PPUSTATUS.bits.sprite_overflow = 1;
+        if (PPUMASK.bits.bg_enable || PPUMASK.bits.sprite_enable)
+          PPUSTATUS.bits.sprite_overflow = 1;
         spriteCount = 8;
       }
     }
@@ -719,6 +721,11 @@ void NedNes::Ned2C02::clock() {
   }
 
   cycles++;
+  if (PPUMASK.bits.bg_enable || PPUMASK.bits.sprite_enable) {
+    if (cycles == 260 && (scanlines < 240)) {
+      cart->getMapper()->scanline();
+    }
+  }
 
   frameComplete = false;
   if (cycles >= 341) {
@@ -829,3 +836,4 @@ Uint32 NedNes::Ned2C02::getColorFromPalette(uint8_t palette, uint8_t idx) {
   SDL_Color col = paletteColor[ppuRead(0x3F00 + palette + idx)];
   return COLOR_TO_UINT32(col);
 }
+uint8_t NedNes::Ned2C02::getOamAddr() { return oam_addr; }

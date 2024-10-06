@@ -1,4 +1,5 @@
 #include "../include/NedBus.h"
+#include <cstdio>
 #define _CRT_SECURE_NO_WARNINGS
 #include <cstdint>
 #include <memory>
@@ -42,8 +43,8 @@ void NedNes::NedBus::cpuWrite(uint16_t addr, uint8_t val) {
     // writing to the oamdma register initiates DMA
     dma_transfer = true;
     dma_page = val;
-    dma_addr = 0x00;
-
+    dma_addr = ppu->getOamAddr();
+    dma_transfered_data = 0;
   } else if (addr == 0x4016 || addr == 0x4017) {
     auto pad = joypads[addr - 0x4016];
 
@@ -81,11 +82,13 @@ void NedNes::NedBus::clock() {
         } else {
           // write them on odd cycles
           ppu->pOAM[dma_addr] = dma_data;
-          dma_addr++;
+          dma_addr = (dma_addr + 1) % 256;
+          dma_transfered_data += 1;
           dma_data &= 0xFF;
-          if (dma_addr == 0x00) {
+          if (dma_transfered_data == 256) {
             dma_pre = true;
             dma_transfer = false;
+            dma_transfered_data = 0;
           }
         }
       }
@@ -100,6 +103,11 @@ void NedNes::NedBus::clock() {
     ppu->PPUSTATUS.bits.vblank = 0x00; // clearing vblank
     ppu->nmi = false;
     cpu->nmi();
+  }
+
+  if (cart->getMapper()->irqState()) {
+    cart->getMapper()->irqClear();
+    cpu->irq();
   }
   SystemClock++;
 }

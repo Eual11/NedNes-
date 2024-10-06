@@ -1,4 +1,5 @@
 #include "../include/Ned6502.h"
+#include <cstdio>
 #define _CRT_SECURE_NO_WARNINGS
 #include <stdint.h>
 #include <string>

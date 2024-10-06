@@ -11,3 +11,4 @@
 - Blarg SpriteRam Test fails with error 02 [Updated]
 - Blarg SpriteRam Test fails with error 07
 - There is still some problems in sprite and background priority, maybe it's spritehit zero problem
+- Sprite alignment tests failed with [6 Sprite should hit right side of bg tile]

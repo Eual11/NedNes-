@@ -38,8 +38,8 @@ int main(int argc, char **argv) {
 
   // TODO: better controllers
   init();
-  auto cart = std::make_shared<NedNes::NedCartrdige>(
-      "../rom/tests/nes-test-roms/blargg_ppu_tests_2005.09.15b/sprite_ram.nes");
+  auto cart =
+      std::make_shared<NedNes::NedCartrdige>("../rom/games/Crystalis (U).nes");
 
   auto joypad1 = std::make_shared<NedNes::NedJoypad>();
   // setting up nednes bus
@@ -200,30 +200,28 @@ int main(int argc, char **argv) {
     SDL_RenderCopy(gRenderer, EmuBus->ppu->getScreenTexture(), nullptr,
                    &scrArea);
 
-    /* SDL_RenderCopy(gRenderer, EmuBus->ppu->getPatternTable(0,
-     * p_idx), nullptr, */
-    /*                &patternTableArea1); */
-    /* SDL_RenderCopy(gRenderer, EmuBus->ppu->getPatternTable(1, p_idx),
-     * nullptr, */
-    /*                &patternTableArea2); */
+#ifdef _DEBUG
+    SDL_RenderCopy(gRenderer, EmuBus->ppu->getPatternTable(0, p_idx), nullptr,
+                   &patternTableArea1);
+    SDL_RenderCopy(gRenderer, EmuBus->ppu->getPatternTable(1, p_idx), nullptr,
+                   &patternTableArea2);
 
-    /* for (int i = 0; i < 4; i++) { */
-    /**/
-    /*   int offset = 0; */
-    /*   if (i > 0) */
-    /*     offset = 2 * i; */
-    /*   SDL_Rect area = {nametableArea.x + nametableArea.w * i + offset, */
-    /*                    nametableArea.y, nametableArea.w, nametableArea.h};
-     */
-    /*   SDL_RenderCopy(gRenderer, EmuBus->ppu->getNameTable(i, p_idx),
-     * nullptr, */
-    /*                  &area); */
-    /* } */
-    /**/
-    /* DisplayNESColorPalettes(gRenderer, EmuBus->ppu, */
-    /*                         patternTableArea1.x + 2 * patternTableArea1.w +
-     * 200, */
-    /*                         patternTableArea1.y, 16, 10); */
+    for (int i = 0; i < 4; i++) {
+
+      int offset = 0;
+      if (i > 0)
+        offset = 2 * i;
+      SDL_Rect area = {nametableArea.x + nametableArea.w * i + offset,
+                       nametableArea.y, nametableArea.w, nametableArea.h};
+
+      SDL_RenderCopy(gRenderer, EmuBus->ppu->getNameTable(i, p_idx), nullptr,
+                     &area);
+    }
+
+    DisplayNESColorPalettes(gRenderer, EmuBus->ppu,
+                            patternTableArea1.x + 2 * patternTableArea1.w + 200,
+                            patternTableArea1.y, 16, 10);
+#endif
     SDL_RenderPresent(gRenderer);
   }
 

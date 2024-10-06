@@ -21,6 +21,9 @@ public:
   bool ppuMapWriteAddress(uint16_t addr, uint32_t &mapped) override;
 
   void reset() override;
+  void irqClear() override {};
+  void scanline() override {};
+  bool irqState() override { return false; }
 
 private:
   std::vector<uint8_t> RAM;
