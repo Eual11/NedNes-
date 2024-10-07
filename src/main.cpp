@@ -1,4 +1,6 @@
+#include <SDL2/SDL_gamecontroller.h>
 #include <SDL2/SDL_keycode.h>
+#include <cstdint>
 #include <string>
 #define _CRT_SECURE_NO_WARNINGS
 #include "../include/NedNes.h"
@@ -9,8 +11,9 @@
 #include <SDL2/SDL_render.h>
 #include <SDL2/SDL_ttf.h>
 #include <SDL2/SDL_video.h>
+
 #include <memory>
-#include <stdio.h>
+#include <set>
 
 #define WINDOW_WIDTH 1280
 #define WINDOW_HEIGHT 720
@@ -30,29 +33,59 @@ SDL_Rect patternTableArea1 = {0, (WINDOW_HEIGHT - (128 + 30)), 128, 128};
 SDL_Rect patternTableArea2 = {256, (WINDOW_HEIGHT - (128 + 30)), 128, 128};
 SDL_Rect nametableArea = {0, 300, 256, 240};
 
-void init();
+// TODO: support for Turbo!
+std::map<SDL_KeyCode, NedNes::JOYPAD_BUTTONS> keymap = {
 
+    {SDLK_a, NedNes::BUTTON_A},       {SDLK_d, NedNes::BUTTON_B},
+
+    {SDLK_q, NedNes::BUTTON_SELECT},  {SDLK_e, NedNes::BUTTON_START},
+    {SDLK_UP, NedNes::BUTTON_UP},     {SDLK_DOWN, NedNes::BUTTON_DOWN},
+    {SDLK_LEFT, NedNes::BUTTON_LEFT}, {SDLK_RIGHT, NedNes::BUTTON_RIGHT},
+};
+std::map<SDL_GameControllerButton, NedNes::JOYPAD_BUTTONS> joystickMap = {
+
+    {SDL_CONTROLLER_BUTTON_A, NedNes::BUTTON_A},
+    {SDL_CONTROLLER_BUTTON_B, NedNes::BUTTON_B},
+    {SDL_CONTROLLER_BUTTON_BACK, NedNes::BUTTON_SELECT},
+    {SDL_CONTROLLER_BUTTON_START, NedNes::BUTTON_START},
+
+    {SDL_CONTROLLER_BUTTON_DPAD_UP, NedNes::BUTTON_UP},
+    {SDL_CONTROLLER_BUTTON_DPAD_DOWN, NedNes::BUTTON_DOWN},
+    {SDL_CONTROLLER_BUTTON_DPAD_LEFT, NedNes::BUTTON_LEFT},
+    {SDL_CONTROLLER_BUTTON_DPAD_RIGHT, NedNes::BUTTON_RIGHT},
+};
+std::set<SDL_GameController *> joysticks;
+SDL_GameController *mapped_joystick[2];
+void init();
+void HandleController(std::shared_ptr<NedNes::NedBus> bus);
+uint8_t getControllerStateFromKeyboard();
+uint8_t getControllerStateFromJoyStick(SDL_GameController *);
 void close_program();
 
 int main(int argc, char **argv) {
 
   // TODO: better controllers
   init();
+
+  mapped_joystick[0] = nullptr;
+  mapped_joystick[1] = nullptr;
   auto cart =
-      std::make_shared<NedNes::NedCartrdige>("../rom/games/Crystalis (U).nes");
+      std::make_shared<NedNes::NedCartrdige>("../rom/games/Contra (U).nes");
 
   auto joypad1 = std::make_shared<NedNes::NedJoypad>();
+  auto joypad2 = std::make_shared<NedNes::NedJoypad>();
   // setting up nednes bus
   auto EmuBus = std::make_shared<NedNes::NedBus>();
   auto CPU = std::make_shared<NedNes::Ned6502>();
   auto PPU = std::make_shared<NedNes::Ned2C02>(gRenderer);
   PPU->connectBus(EmuBus);
   PPU->connectCart(cart);
-
+  ;
   EmuBus->connectCartridge(cart);
   EmuBus->connectPpu(PPU);
   EmuBus->connectCpu(CPU);
   EmuBus->connectJoypad(0, joypad1);
+  EmuBus->connectJoypad(1, joypad2);
   CPU->connectBus(EmuBus);
   /* CPU->logFile = f; */
 
@@ -62,42 +95,100 @@ int main(int argc, char **argv) {
     printf("Rom Loaded\n");
   }
 
+  // fetching all conntected controllers
+  for (int i = 0; i < SDL_NumJoysticks(); i++) {
+    if (SDL_IsGameController((i))) {
+      SDL_GameController *ctrler = SDL_GameControllerOpen(i);
+      SDL_Log("controller %d added\n", SDL_GameControllerNameForIndex(i));
+      if (ctrler) {
+        joysticks.insert(ctrler);
+      }
+    }
+  }
+  // setting controller 2 with  controller mapped
+  // NOTE: THIS IS ONLY FOR TESTING PURPUSE! and it will be removed once
+  // everything is done
+
   bool quit = false;
   std::map<uint16_t, std::string> disMap;
 
-  std::map<SDL_KeyCode, NedNes::JOYPAD_BUTTONS> keymap = {
-
-      {SDLK_a, NedNes::BUTTON_A},       {SDLK_d, NedNes::BUTTON_B},
-
-      {SDLK_q, NedNes::BUTTON_SELECT},  {SDLK_e, NedNes::BUTTON_START},
-      {SDLK_UP, NedNes::BUTTON_UP},     {SDLK_DOWN, NedNes::BUTTON_DOWN},
-      {SDLK_LEFT, NedNes::BUTTON_LEFT}, {SDLK_RIGHT, NedNes::BUTTON_RIGHT},
-  };
-  SDL_Event e;
+  SDL_Event event;
   while (!quit) {
-    while (SDL_PollEvent(&e)) {
-      if (e.type == SDL_QUIT) {
+    while (SDL_PollEvent(&event)) {
+      if (event.type == SDL_QUIT) {
         quit = true;
+      }
+      if (event.type == SDL_CONTROLLERDEVICEADDED) {
+
+        if (SDL_IsGameController(event.cdevice.which)) {
+          SDL_Log("Controller %s added\n",
+                  SDL_GameControllerNameForIndex(event.cdevice.which));
+          SDL_GameController *c = SDL_GameControllerOpen(event.cdevice.which);
+
+          if (c) {
+            joysticks.insert(c);
+          }
+          SDL_Log("%d Total controllers\n", joysticks.size());
+        }
+        // remapping the controlelrs
+
+        if (joysticks.size() == 1) {
+          mapped_joystick[1] = *joysticks.begin();
+          SDL_Log("%s is now Player 2\n",
+                  SDL_GameControllerNameForIndex(event.cdevice.which));
+        }
+        auto iter = joysticks.begin();
+        if (joysticks.size() > 1) {
+          for (int i = 0; i < 2; i++) {
+            mapped_joystick[i] = *iter;
+            SDL_Log("%s is now Player %d \n", SDL_GameControllerName(*iter),
+                    i + 1);
+            iter++;
+          }
+        }
+      }
+      if (event.type == SDL_CONTROLLERDEVICEREMOVED) {
+
+        SDL_Log("%d controller removed\n", event.cdevice.which);
+
+        SDL_GameController *ctrl =
+            SDL_GameControllerFromInstanceID(event.cdevice.which);
+
+        if (mapped_joystick[0] == ctrl) {
+          mapped_joystick[0] = nullptr;
+          SDL_Log("Player 1 is now keyboard \n");
+        }
+        if (mapped_joystick[1] == ctrl) {
+          mapped_joystick[1] = nullptr;
+          SDL_Log("Player 2 is now keyboard \n");
+        }
+        if (joysticks.find(ctrl) != joysticks.end()) {
+          joysticks.erase(ctrl);
+        }
+        SDL_GameControllerClose(ctrl);
+
+        SDL_Log("%d controller closed\n", event.cdevice.which);
+        SDL_Log("%d Total controllers\n", joysticks.size());
       }
 
       // Get the current state of the keyboard
-      const Uint8 *state = SDL_GetKeyboardState(NULL);
-
-      // Initialize the joypad state to zero
-      uint8_t joypadState = 0;
-
-      // Check for key presses and update joypad state
-      for (const auto &pair : keymap) {
-        if (state[SDL_GetScancodeFromKey(pair.first)]) {
-          joypadState |= (1 << pair.second); // Set the corresponding bit
-        }
-      }
-      EmuBus->setState(0, joypadState);
-
+      /* const Uint8 *state = SDL_GetKeyboardState(NULL); */
+      /**/
+      /* // Initialize the joypad state to zero */
+      /* uint8_t joypadState = 0; */
+      /**/
+      /* // Check for key presses and update joypad state */
+      /* for (const auto &pair : keymap) { */
+      /*   if (state[SDL_GetScancodeFromKey(pair.first)]) { */
+      /*     joypadState |= (1 << pair.second); // Set the corresponding bit */
+      /*   } */
+      /* } */
+      /* EmuBus->setState(0, joypadState); */
+      /**/
       // Update the joypad state
 
-      if (e.type == SDL_KEYDOWN) {
-        switch (e.key.keysym.sym) {
+      if (event.type == SDL_KEYDOWN) {
+        switch (event.key.keysym.sym) {
         case SDLK_s: {
           // step a whole instruction
           //
@@ -144,7 +235,7 @@ int main(int argc, char **argv) {
         }
       }
     }
-
+    HandleController(EmuBus);
     if (bFreeRun) {
       while (!EmuBus->ppu->isFrameComplete()) {
         EmuBus->clock();
@@ -231,7 +322,8 @@ int main(int argc, char **argv) {
 
 void init() {
 
-  if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO) < 0) {
+  if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_JOYSTICK |
+               SDL_INIT_GAMECONTROLLER) < 0) {
     fprintf(stderr, "Error Occoured: %s \n ", SDL_GetError());
     exit(1);
   }
@@ -273,4 +365,47 @@ void close_program() {
   gWindow = nullptr;
   SDL_Quit();
   printf("NedNes Closed Gracefully");
+}
+void HandleController(std::shared_ptr<NedNes::NedBus> bus) {
+  uint8_t joypadState1 = 0;
+  uint8_t joypadState2 = 0;
+  if (mapped_joystick[0]) {
+
+    joypadState1 = getControllerStateFromJoyStick(mapped_joystick[0]);
+  } else {
+    joypadState1 = getControllerStateFromKeyboard();
+  }
+
+  if (mapped_joystick[1]) {
+    joypadState2 = getControllerStateFromJoyStick(mapped_joystick[1]);
+  } else {
+    joypadState2 = getControllerStateFromKeyboard();
+  }
+  bus->setState(0, joypadState1);
+  bus->setState(1, joypadState2);
+}
+uint8_t getControllerStateFromKeyboard() {
+  const Uint8 *state = SDL_GetKeyboardState(NULL);
+
+  // Initialize the joypad state to zero
+  uint8_t joypadState = 0;
+
+  // Check for key presses and update joypad state
+  for (const auto &pair : keymap) {
+    if (state[SDL_GetScancodeFromKey(pair.first)]) {
+      joypadState |= (1 << pair.second); // Set the corresponding bit
+    }
+  }
+  return joypadState;
+}
+uint8_t getControllerStateFromJoyStick(SDL_GameController *ctrl) {
+
+  uint8_t joypadState = 0;
+  for (const auto &pair : joystickMap) {
+
+    if (SDL_GameControllerGetButton(ctrl, pair.first)) {
+      joypadState |= (1 << pair.second); // Set the corresponding bit
+    }
+  }
+  return joypadState;
 }
