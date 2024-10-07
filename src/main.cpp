@@ -1,5 +1,6 @@
 #include <SDL2/SDL_gamecontroller.h>
 #include <SDL2/SDL_keycode.h>
+#include <SDL2/SDL_log.h>
 #include <cstdint>
 #include <string>
 #define _CRT_SECURE_NO_WARNINGS
@@ -70,7 +71,7 @@ int main(int argc, char **argv) {
   mapped_joystick[0] = nullptr;
   mapped_joystick[1] = nullptr;
   auto cart =
-      std::make_shared<NedNes::NedCartrdige>("../rom/games/Contra (U).nes");
+      std::make_shared<NedNes::NedCartrdige>("../rom/games/Mega Man 4 (E).nes");
 
   auto joypad1 = std::make_shared<NedNes::NedJoypad>();
   auto joypad2 = std::make_shared<NedNes::NedJoypad>();
@@ -133,8 +134,9 @@ int main(int argc, char **argv) {
         // remapping the controlelrs
 
         if (joysticks.size() == 1) {
-          mapped_joystick[1] = *joysticks.begin();
-          SDL_Log("%s is now Player 2\n",
+          // HACK: this is a hack for testing the joysticks
+          mapped_joystick[0] = *joysticks.begin();
+          SDL_Log("%s is now Player 1\n",
                   SDL_GameControllerNameForIndex(event.cdevice.which));
         }
         auto iter = joysticks.begin();
@@ -407,5 +409,30 @@ uint8_t getControllerStateFromJoyStick(SDL_GameController *ctrl) {
       joypadState |= (1 << pair.second); // Set the corresponding bit
     }
   }
+
+  // checking for analog sticks
+  Sint16 leftX = SDL_GameControllerGetAxis(ctrl, SDL_CONTROLLER_AXIS_LEFTX);
+  // Get the value of the left stick's vertical axis (Y)
+  Sint16 leftY = SDL_GameControllerGetAxis(ctrl, SDL_CONTROLLER_AXIS_LEFTY);
+  // Get the value of the right stick's horizontal axis (X)
+
+  if (leftX > 0) {
+
+    joypadState |= (1 << NedNes::BUTTON_RIGHT);
+  } else if (leftX < 0) {
+
+    joypadState |= (1 << NedNes::BUTTON_LEFT);
+  }
+
+  // BUG: for some reason SDL reports moving the axis upward as a negative
+  // value? why?
+  if (leftY > 0) {
+
+    joypadState |= (1 << NedNes::BUTTON_DOWN);
+  } else if (leftY < 0) {
+
+    joypadState |= (1 << NedNes::BUTTON_UP);
+  }
+
   return joypadState;
 }
