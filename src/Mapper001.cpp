@@ -1,5 +1,6 @@
 #include "../include/Mapper001.h"
 #include <cstdint>
+// TODO: fix this shit, it doesn't work
 void NedNes::Mapper001::reset() {
   CHRSelectBank8k = 0x00;
   CHRSelectBank4Hi = 0x00;

@@ -1,6 +1,9 @@
+#include <SDL2/SDL_audio.h>
 #include <SDL2/SDL_gamecontroller.h>
 #include <SDL2/SDL_keycode.h>
 #include <SDL2/SDL_log.h>
+#include <SDL2/SDL_stdinc.h>
+#include <SDL2/SDL_timer.h>
 #include <cstdint>
 #include <string>
 #define _CRT_SECURE_NO_WARNINGS
@@ -18,21 +21,68 @@
 
 #define WINDOW_WIDTH 1280
 #define WINDOW_HEIGHT 720
+
+// Write WAV file to disk
+std::vector<int16_t> audioBuffer;
+struct WAVHeader {
+  char riff[4] = {'R', 'I', 'F', 'F'};
+  uint32_t fileSize;
+  char wave[4] = {'W', 'A', 'V', 'E'};
+  char fmt[4] = {'f', 'm', 't', ' '};
+  uint32_t fmtLength = 16;
+  uint16_t audioFormat = 1; // PCM
+  uint16_t numChannels = 1; // Mono
+  uint32_t sampleRate = 44100;
+  uint32_t byteRate;
+  uint16_t blockAlign;
+  uint16_t bitsPerSample = 16;
+  char data[4] = {'d', 'a', 't', 'a'};
+  uint32_t dataSize;
+};
+void writeWAV(const std::string &filename,
+              const std::vector<int16_t> &audioData, uint32_t sampleRate) {
+  WAVHeader header;
+  header.sampleRate = sampleRate;
+  header.numChannels = 1;    // Mono
+  header.bitsPerSample = 16; // 16-bit samples
+  header.byteRate = sampleRate * header.numChannels * header.bitsPerSample / 8;
+  header.blockAlign = header.numChannels * header.bitsPerSample / 8;
+  header.dataSize = audioData.size() * sizeof(int16_t);
+  header.fileSize = 36 + header.dataSize;
+
+  std::ofstream file(filename, std::ios::binary);
+  if (!file) {
+    std::cerr << "Failed to open file for writing\n";
+    return;
+  }
+
+  // Write WAV header
+  file.write((const char *)&header, sizeof(header));
+
+  // Write audio data
+  file.write((const char *)audioData.data(), header.dataSize);
+
+  file.close();
+}
+
 bool bFreeRun = false;
 SDL_Window *gWindow = nullptr;
 int p_idx = 0;
 SDL_Renderer *gRenderer = nullptr;
 
 TTF_Font *global_font = nullptr;
-
+SDL_AudioDeviceID device = 0;
 // Screen and pattern table area
 //
-//
-
 SDL_Rect scrArea = {0, 0, 256 * 3, 240 * 3};
 SDL_Rect patternTableArea1 = {0, (WINDOW_HEIGHT - (128 + 30)), 128, 128};
 SDL_Rect patternTableArea2 = {256, (WINDOW_HEIGHT - (128 + 30)), 128, 128};
 SDL_Rect nametableArea = {0, 300, 256, 240};
+const int FREQUENCY = 440; // A4
+const int AMP = 2000;
+double t = 0;
+double H = 1;
+double duty_cycle = 0.75;
 
 // TODO: support for Turbo!
 std::map<SDL_KeyCode, NedNes::JOYPAD_BUTTONS> keymap = {
@@ -61,7 +111,11 @@ void init();
 void HandleController(std::shared_ptr<NedNes::NedBus> bus);
 uint8_t getControllerStateFromKeyboard();
 uint8_t getControllerStateFromJoyStick(SDL_GameController *);
+
+const int SAMPLE_RATE = 44100;
+const int SAMPLE = 2048;
 void close_program();
+void AudioCallback(void *userdata, Uint8 *data, int len);
 
 int main(int argc, char **argv) {
 
@@ -70,8 +124,8 @@ int main(int argc, char **argv) {
 
   mapped_joystick[0] = nullptr;
   mapped_joystick[1] = nullptr;
-  auto cart =
-      std::make_shared<NedNes::NedCartrdige>("../rom/games/Mega Man 4 (E).nes");
+  auto cart = std::make_shared<NedNes::NedCartrdige>();
+  cart->loadRom("../rom/games/DuckTales (USA).nes");
 
   auto joypad1 = std::make_shared<NedNes::NedJoypad>();
   auto joypad2 = std::make_shared<NedNes::NedJoypad>();
@@ -79,17 +133,33 @@ int main(int argc, char **argv) {
   auto EmuBus = std::make_shared<NedNes::NedBus>();
   auto CPU = std::make_shared<NedNes::Ned6502>();
   auto PPU = std::make_shared<NedNes::Ned2C02>(gRenderer);
+  auto APU = std::make_shared<NedNes::Ned2A03>();
   PPU->connectBus(EmuBus);
   PPU->connectCart(cart);
-  ;
   EmuBus->connectCartridge(cart);
   EmuBus->connectPpu(PPU);
   EmuBus->connectCpu(CPU);
+  EmuBus->connectApu(APU);
   EmuBus->connectJoypad(0, joypad1);
   EmuBus->connectJoypad(1, joypad2);
   CPU->connectBus(EmuBus);
-  /* CPU->logFile = f; */
 
+  SDL_AudioSpec want, have;
+
+  SDL_zero(want);
+  want.freq = SAMPLE_RATE;
+  want.channels = 1;
+  want.format = AUDIO_S16;
+  /* want.userdata = (void *)(APU.get()); */
+  /* want.callback = AudioCallback; */
+
+  device = SDL_OpenAudioDevice(NULL, 0, &want, &have, 0);
+  if (device == 0) {
+    std::cerr << "Failed to open audio: " << SDL_GetError() << std::endl;
+    return -1;
+  }
+
+  SDL_PauseAudioDevice(device, 0);
   EmuBus->reset();
   printf("Program %s running with %d args\n", argv[0], argc);
   if (cart->imageValid()) {
@@ -318,6 +388,7 @@ int main(int argc, char **argv) {
     SDL_RenderPresent(gRenderer);
   }
 
+  writeWAV("test.wav", audioBuffer, 44100);
   close_program();
   return 0;
 }
@@ -362,6 +433,7 @@ void init() {
 void close_program() {
 
   SDL_DestroyRenderer(gRenderer);
+  SDL_CloseAudioDevice(device);
   gRenderer = nullptr;
   SDL_DestroyWindow(gWindow);
   gWindow = nullptr;
@@ -435,4 +507,25 @@ uint8_t getControllerStateFromJoyStick(SDL_GameController *ctrl) {
   }
 
   return joypadState;
+}
+void AudioCallback(void *userdata, Uint8 *data, int len) {
+  memset(data, 0, len);
+  if (userdata) {
+
+    int16_t *buffer = (int16_t *)data;
+    int sampleCount = len / sizeof(int16_t);
+
+    NedNes::Ned2A03 *apu = static_cast<NedNes::Ned2A03 *>(userdata);
+    /* printf("%d samples written before callback\n", */
+    /*        apu->current_sample_count - apu->last_sample_count); */
+    apu->last_sample_count = apu->current_sample_count;
+    apu->current_sample_count = 0x00;
+    /* apu->fillAudioBuffer(buffer, sampleCount); */
+
+    for (int i = 0; i < sampleCount; i++) {
+      buffer[i] = UINT16_MAX * sin(SDL_GetTicks() * 100.0f / 1000.0);
+    }
+
+    /* audioBuffer.insert(audioBuffer.end(), buffer, buffer + sampleCount); */
+  }
 }

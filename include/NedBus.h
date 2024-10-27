@@ -1,5 +1,6 @@
 #pragma once
 #include "../include/Ned6502.h"
+#include "Ned2A03.h"
 #include "Ned2CO2.h"
 #include "NedCartridge.h"
 #include "NedJoypad.h"
@@ -28,10 +29,12 @@ public:
   void connectCpu(std::shared_ptr<Ned6502>);
   void connectPpu(std::shared_ptr<Ned2C02>);
   void connectCartridge(std::shared_ptr<NedCartrdige>);
+  void connectApu(std::shared_ptr<Ned2A03>);
   void setState(int n, uint8_t state);
   void connectJoypad(int n, std::shared_ptr<NedJoypad>);
   std::shared_ptr<Ned6502> cpu = nullptr;
   std::shared_ptr<Ned2C02> ppu = nullptr;
+  std::shared_ptr<Ned2A03> apu = nullptr;
   std::shared_ptr<NedCartrdige> cart = nullptr;
   std::shared_ptr<NedJoypad> joypads[2] = {nullptr, nullptr};
 

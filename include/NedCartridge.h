@@ -22,9 +22,11 @@ private:
   uint8_t mapperID;
 
 public:
+  NedCartrdige() = default;
   bool imageValid();
   NedCartrdige(std::string filename);
-  Mirror mirrorType;
+  bool loadRom(std::string filename);
+  Mirror mirrorType = HORIZONTAL;
 
   // read and writes from CPU
   bool cpuRead(uint16_t addr, uint8_t &data);

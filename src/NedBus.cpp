@@ -25,6 +25,9 @@ uint8_t NedNes::NedBus::cpuRead(uint16_t addr) {
     if (pad) {
       data = pad->read();
     }
+  } else if (addr >= 0x4000 && addr <= 0x4013 || addr == 0x4015 ||
+             addr == 0x4017) {
+    data = apu->cpuRead(addr);
   }
 
   return data;
@@ -51,6 +54,11 @@ void NedNes::NedBus::cpuWrite(uint16_t addr, uint8_t val) {
     if (pad) {
       pad->write(val);
     }
+  } else if (addr >= 0x4000 && addr <= 0x4013 || addr == 0x4015 ||
+             addr == 0x4017) {
+    if (apu) {
+      apu->cpuWrite(addr, val);
+    }
   }
 }
 
@@ -62,7 +70,12 @@ void NedNes::NedBus::connectCartridge(std::shared_ptr<NedCartrdige> _cart) {
   this->cart = _cart;
 }
 void NedNes::NedBus::clock() {
-  ppu->clock();
+  if (ppu) {
+    ppu->clock();
+  }
+  if (apu) {
+    apu->clock();
+  }
   if (SystemClock % 3 == 0) {
 
     // if there is dma transfer suspend the cpu clock
@@ -143,4 +156,7 @@ void NedNes::NedBus::reset() {
 void NedNes::NedBus::connectJoypad(int n, std::shared_ptr<NedJoypad> con) {
   n %= 2;
   joypads[n] = con;
+}
+void NedNes::NedBus::connectApu(std::shared_ptr<Ned2A03> apu) {
+  this->apu = apu;
 }
