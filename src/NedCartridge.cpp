@@ -88,8 +88,10 @@ NedCartrdige::NedCartrdige(std::string filename) {
       rom.read((char *)PGRMemory.data(), PGRMemory.size());
       rom.read((char *)CHRMemory.data(), CHRMemory.size());
 
-      valid = true;
-      mMapper->setMirror(mirrorType);
+      if (mMapper) {
+        valid = true;
+        mMapper->setMirror(mirrorType);
+      }
     }
     rom.close();
   }
@@ -102,6 +104,8 @@ bool NedCartrdige::cpuRead(uint16_t addr, uint8_t &data) {
   // mapping the cpu address to the phsical program memory address in the room
   // using the mapper
   uint32_t mapped_addr = 0x00;
+  if (!mMapper)
+    return false;
   if (mMapper->cpuMapReadAddress(addr, mapped_addr, data)) {
     // reading from the program memory
     if (mapped_addr == 0xFFFFFFFF) {
@@ -120,7 +124,8 @@ bool NedCartrdige::cpuWrite(uint16_t addr, uint8_t data) {
 
   // mapping cpu address to the physical memoery address in the rom
   uint32_t mapped_addr = 0x00;
-
+  if (!mMapper)
+    return false;
   if (mMapper->cpuMapWriteAddress(addr, mapped_addr, data)) {
 
     if (mapped_addr == 0xFFFFFFFF)
@@ -135,6 +140,8 @@ bool NedCartrdige::cpuWrite(uint16_t addr, uint8_t data) {
 
 bool NedCartrdige::ppuRead(uint16_t addr, uint8_t &data) {
   uint32_t mapped_addr = 0x00;
+  if (!mMapper)
+    return false;
   if (mMapper->ppuMapReadAddress(addr, mapped_addr)) {
 
     if (mapped_addr < CHRMemory.size()) {
@@ -147,7 +154,8 @@ bool NedCartrdige::ppuRead(uint16_t addr, uint8_t &data) {
 bool NedCartrdige::ppuWrite(uint16_t addr, uint8_t data) {
 
   uint32_t mapped_addr = 0x00;
-
+  if (!mMapper)
+    return false;
   if (mMapper->ppuMapWriteAddress(addr, mapped_addr)) {
 
     if (mapped_addr < CHRMemory.size()) {
@@ -244,4 +252,12 @@ bool NedNes::NedCartrdige::loadRom(std::string filename) {
     return false;
   }
   return true;
+}
+void NedNes::NedCartrdige::unload() {
+  valid = false;
+  mMapper = nullptr;
+  nPGRBanks = 0;
+  nCHRBanks = 0;
+  PGRMemory.clear();
+  CHRMemory.clear();
 }

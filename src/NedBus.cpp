@@ -118,7 +118,7 @@ void NedNes::NedBus::clock() {
     cpu->nmi();
   }
 
-  if (cart->getMapper()->irqState()) {
+  if (cart->imageValid() && cart->getMapper()->irqState()) {
     cart->getMapper()->irqClear();
     cpu->irq();
   }

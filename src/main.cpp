@@ -125,8 +125,9 @@ int main(int argc, char **argv) {
   mapped_joystick[0] = nullptr;
   mapped_joystick[1] = nullptr;
   auto cart = std::make_shared<NedNes::NedCartrdige>();
-  cart->loadRom("../rom/games/DuckTales (USA).nes");
+  cart->loadRom("../rom/games/Contra (U).nes");
 
+  cart->unload();
   auto joypad1 = std::make_shared<NedNes::NedJoypad>();
   auto joypad2 = std::make_shared<NedNes::NedJoypad>();
   // setting up nednes bus
@@ -153,11 +154,11 @@ int main(int argc, char **argv) {
   /* want.userdata = (void *)(APU.get()); */
   /* want.callback = AudioCallback; */
 
-  device = SDL_OpenAudioDevice(NULL, 0, &want, &have, 0);
-  if (device == 0) {
-    std::cerr << "Failed to open audio: " << SDL_GetError() << std::endl;
-    return -1;
-  }
+  /* device = SDL_OpenAudioDevice(NULL, 0, &want, &have, 0); */
+  /* if (device == 0) { */
+  /*   std::cerr << "Failed to open audio: " << SDL_GetError() << std::endl; */
+  /*   return -1; */
+  /* } */
 
   SDL_PauseAudioDevice(device, 0);
   EmuBus->reset();
