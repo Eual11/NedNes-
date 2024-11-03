@@ -73,9 +73,9 @@ void NedNes::NedBus::clock() {
   if (ppu) {
     ppu->clock();
   }
-  if (apu) {
-    apu->clock();
-  }
+  /* if (apu) { */
+  /*   apu->clock(); */
+  /* } */
   if (SystemClock % 3 == 0) {
 
     // if there is dma transfer suspend the cpu clock

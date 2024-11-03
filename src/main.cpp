@@ -7,7 +7,7 @@
 #include <cstdint>
 #include <string>
 #define _CRT_SECURE_NO_WARNINGS
-#include "../include/NedNes.h"
+/* #include "../include/NedNes.h" */
 #include "../include/RenderUtils.h"
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_error.h>
@@ -127,7 +127,7 @@ int main(int argc, char **argv) {
   auto cart = std::make_shared<NedNes::NedCartrdige>();
   cart->loadRom("../rom/games/Contra (U).nes");
 
-  cart->unload();
+  /* cart->unload(); */
   auto joypad1 = std::make_shared<NedNes::NedJoypad>();
   auto joypad2 = std::make_shared<NedNes::NedJoypad>();
   // setting up nednes bus
@@ -281,11 +281,13 @@ int main(int argc, char **argv) {
         }
         case SDLK_RETURN: {
 
-          printf("Framed Skipped\n");
           // step one clock
+          if (!cart->imageValid())
+            break;
           while (!EmuBus->ppu->isFrameComplete()) {
             EmuBus->clock();
           }
+
           while (!EmuBus->cpu->complete()) {
             EmuBus->clock();
           }
@@ -309,7 +311,7 @@ int main(int argc, char **argv) {
       }
     }
     HandleController(EmuBus);
-    if (bFreeRun) {
+    if (bFreeRun && cart->imageValid()) {
       while (!EmuBus->ppu->isFrameComplete()) {
         EmuBus->clock();
       }
