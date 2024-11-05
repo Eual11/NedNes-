@@ -129,8 +129,8 @@ int main(int argc, char **argv) {
   // setting up nednes bus
 
   SDL_AudioSpec want, have;
-  NedNes::NedNesEmulator NED(gRenderer, "../rom/games/Contra (U).nes");
-  /* NED.loadRom("../rom/tests/nestest.nes"); */
+  NedNes::NedNesEmulator NED(gRenderer);
+  NED.loadRom("../rom/games/Battle City (J).nes");
   SDL_zero(want);
   want.freq = SAMPLE_RATE;
   want.channels = 1;
@@ -223,23 +223,6 @@ int main(int argc, char **argv) {
         SDL_Log("%d controller closed\n", event.cdevice.which);
         SDL_Log("%d Total controllers\n", joysticks.size());
       }
-
-      // Get the current state of the keyboard
-      /* const Uint8 *state = SDL_GetKeyboardState(NULL); */
-      /**/
-      /* // Initialize the joypad state to zero */
-      /* uint8_t joypadState = 0; */
-      /**/
-      /* // Check for key presses and update joypad state */
-      /* for (const auto &pair : keymap) { */
-      /*   if (state[SDL_GetScancodeFromKey(pair.first)]) { */
-      /*     joypadState |= (1 << pair.second); // Set the corresponding bit */
-      /*   } */
-      /* } */
-      /* EmuBus->setState(0, joypadState); */
-      /**/
-      // Update the joypad state
-
       if (event.type == SDL_KEYDOWN) {
         switch (event.key.keysym.sym) {
         case SDLK_s: {
@@ -254,9 +237,9 @@ int main(int argc, char **argv) {
         }
         case SDLK_p: {
           // shifting pallete
-          p_idx++;
-          p_idx %= 8;
-          break;
+          printf("loaded new rom");
+          NED.loadRom("../rom/games/Contra (U).nes");
+          ;
         }
         }
       }

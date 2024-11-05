@@ -21,7 +21,7 @@ NedNes::NedNesEmulator::NedNesEmulator(SDL_Renderer *gRenderer) {
   EmuBus->connectJoypad(0, joypad1);
   EmuBus->connectJoypad(1, joypad2);
   CPU->connectBus(EmuBus);
-  EmuBus->reset();
+  reset();
 }
 NedNes::NedNesEmulator::NedNesEmulator(SDL_Renderer *gRenderer,
                                        std::string path) {
@@ -42,10 +42,13 @@ NedNes::NedNesEmulator::NedNesEmulator(SDL_Renderer *gRenderer,
   EmuBus->connectJoypad(0, joypad1);
   EmuBus->connectJoypad(1, joypad2);
   CPU->connectBus(EmuBus);
-  EmuBus->reset();
+  reset();
 }
 bool NedNes::NedNesEmulator::loadRom(std::string path) {
-  return cart->loadRom(path);
+  cart->unload();
+  bool loaded = cart->loadRom(path);
+  EmuBus->reset();
+  return loaded;
 }
 void NedNes::NedNesEmulator::setControllerState(uint8_t n, uint8_t state) {
   EmuBus->setState(n, state);
@@ -83,3 +86,4 @@ std::map<uint16_t, std::string> NedNes::NedNesEmulator::getDissmap() {
 
   return CPU->disassemble(4);
 }
+void NedNes::NedNesEmulator::reset() { EmuBus->reset(); }
