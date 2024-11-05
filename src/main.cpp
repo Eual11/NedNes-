@@ -7,7 +7,7 @@
 #include <cstdint>
 #include <string>
 #define _CRT_SECURE_NO_WARNINGS
-/* #include "../include/NedNes.h" */
+#include "../include/NedNes.h"
 #include "../include/RenderUtils.h"
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_error.h>
@@ -74,7 +74,7 @@ TTF_Font *global_font = nullptr;
 SDL_AudioDeviceID device = 0;
 // Screen and pattern table area
 //
-SDL_Rect scrArea = {0, 0, 256 * 3, 240 * 3};
+SDL_Rect scrArea = {0, 0, 256 * 1, 240 * 1};
 SDL_Rect patternTableArea1 = {0, (WINDOW_HEIGHT - (128 + 30)), 128, 128};
 SDL_Rect patternTableArea2 = {256, (WINDOW_HEIGHT - (128 + 30)), 128, 128};
 SDL_Rect nametableArea = {0, 300, 256, 240};
@@ -124,29 +124,13 @@ int main(int argc, char **argv) {
 
   mapped_joystick[0] = nullptr;
   mapped_joystick[1] = nullptr;
-  auto cart = std::make_shared<NedNes::NedCartrdige>();
-  cart->loadRom("../rom/games/Contra (U).nes");
 
   /* cart->unload(); */
-  auto joypad1 = std::make_shared<NedNes::NedJoypad>();
-  auto joypad2 = std::make_shared<NedNes::NedJoypad>();
   // setting up nednes bus
-  auto EmuBus = std::make_shared<NedNes::NedBus>();
-  auto CPU = std::make_shared<NedNes::Ned6502>();
-  auto PPU = std::make_shared<NedNes::Ned2C02>(gRenderer);
-  auto APU = std::make_shared<NedNes::Ned2A03>();
-  PPU->connectBus(EmuBus);
-  PPU->connectCart(cart);
-  EmuBus->connectCartridge(cart);
-  EmuBus->connectPpu(PPU);
-  EmuBus->connectCpu(CPU);
-  EmuBus->connectApu(APU);
-  EmuBus->connectJoypad(0, joypad1);
-  EmuBus->connectJoypad(1, joypad2);
-  CPU->connectBus(EmuBus);
 
   SDL_AudioSpec want, have;
-
+  NedNes::NedNesEmulator NED(gRenderer, "../rom/games/Contra (U).nes");
+  /* NED.loadRom("../rom/tests/nestest.nes"); */
   SDL_zero(want);
   want.freq = SAMPLE_RATE;
   want.channels = 1;
@@ -161,11 +145,7 @@ int main(int argc, char **argv) {
   /* } */
 
   SDL_PauseAudioDevice(device, 0);
-  EmuBus->reset();
   printf("Program %s running with %d args\n", argv[0], argc);
-  if (cart->imageValid()) {
-    printf("Rom Loaded\n");
-  }
 
   // fetching all conntected controllers
   for (int i = 0; i < SDL_NumJoysticks(); i++) {
@@ -265,36 +245,7 @@ int main(int argc, char **argv) {
         case SDLK_s: {
           // step a whole instruction
           //
-
-          int clc = 0;
-          do {
-            clc++;
-            EmuBus->clock();
-
-          } while (!EmuBus->cpu->complete());
-          do {
-            clc++;
-            EmuBus->clock();
-
-          } while (EmuBus->cpu->complete());
-          break;
-        }
-        case SDLK_RETURN: {
-
-          // step one clock
-          if (!cart->imageValid())
-            break;
-          while (!EmuBus->ppu->isFrameComplete()) {
-            EmuBus->clock();
-          }
-
-          while (!EmuBus->cpu->complete()) {
-            EmuBus->clock();
-          }
-          while (EmuBus->cpu->complete()) {
-            EmuBus->clock();
-          }
-
+          NED.stepFrame();
           break;
         }
         case SDLK_f: {
@@ -310,17 +261,10 @@ int main(int argc, char **argv) {
         }
       }
     }
-    HandleController(EmuBus);
-    if (bFreeRun && cart->imageValid()) {
-      while (!EmuBus->ppu->isFrameComplete()) {
-        EmuBus->clock();
-      }
-      while (!EmuBus->cpu->complete()) {
-        EmuBus->clock();
-      }
-      while (EmuBus->cpu->complete()) {
-        EmuBus->clock();
-      }
+    // TODO: controllers
+    HandleController(NED.getBus());
+    if (bFreeRun) {
+      NED.stepFrame();
     }
     SDL_SetRenderDrawColor(gRenderer, 0x00, 0x00, 0xff, 0x00);
     SDL_RenderClear(gRenderer);
@@ -329,13 +273,14 @@ int main(int argc, char **argv) {
 
     SDL_Color col = {0xff, 0xff, 0xff, 0xff};
 
-    SDL_Rect R = DrawCPUReg(EmuBus->cpu, gRenderer, global_font,
+    SDL_Rect R = DrawCPUReg(NED.getCPU(), gRenderer, global_font,
                             WINDOW_WIDTH - 350, 10, col);
     R.h += 40;
     //
     //
     // Drawing disassembled instructions
-    disMap = EmuBus->cpu->disassemble(4);
+    /* disMap = EmuBus->cpu->disassemble(4); */
+    disMap = NED.getDissmap();
     col = {0x04, 0x09c, 0xf4, 0xff};
     for (auto &d : disMap) {
       std::string instr = toHex(d.first) + " " + d.second;
@@ -344,8 +289,8 @@ int main(int argc, char **argv) {
       R.h += r.h;
       col = {0xff, 0xff, 0xff, 0x00};
     }
-    NedNes::Ned2C02::oamEntry *oam =
-        (NedNes::Ned2C02::oamEntry *)EmuBus->ppu->pOAM;
+    /* NedNes::Ned2C02::oamEntry *oam = */
+    /* (NedNes::Ned2C02::oamEntry *)EmuBus->ppu->pOAM; */
 
     auto toInt = [&](int s) { return std::to_string(s); };
 
@@ -363,13 +308,11 @@ int main(int argc, char **argv) {
     /*   col = {0xff, 0xff, 0xff, 0x00}; */
     /* } */
 
-    SDL_RenderCopy(gRenderer, EmuBus->ppu->getScreenTexture(), nullptr,
-                   &scrArea);
+    SDL_RenderCopy(gRenderer, NED.getNewFrame(), nullptr, &scrArea);
 
-#ifdef _DEBUG
-    SDL_RenderCopy(gRenderer, EmuBus->ppu->getPatternTable(0, p_idx), nullptr,
+    SDL_RenderCopy(gRenderer, NED.getPPU()->getPatternTable(0, p_idx), nullptr,
                    &patternTableArea1);
-    SDL_RenderCopy(gRenderer, EmuBus->ppu->getPatternTable(1, p_idx), nullptr,
+    SDL_RenderCopy(gRenderer, NED.getPPU()->getPatternTable(1, p_idx), nullptr,
                    &patternTableArea2);
 
     for (int i = 0; i < 4; i++) {
@@ -380,14 +323,13 @@ int main(int argc, char **argv) {
       SDL_Rect area = {nametableArea.x + nametableArea.w * i + offset,
                        nametableArea.y, nametableArea.w, nametableArea.h};
 
-      SDL_RenderCopy(gRenderer, EmuBus->ppu->getNameTable(i, p_idx), nullptr,
+      SDL_RenderCopy(gRenderer, NED.getPPU()->getNameTable(i, p_idx), nullptr,
                      &area);
     }
 
-    DisplayNESColorPalettes(gRenderer, EmuBus->ppu,
+    DisplayNESColorPalettes(gRenderer, NED.getPPU(),
                             patternTableArea1.x + 2 * patternTableArea1.w + 200,
                             patternTableArea1.y, 16, 10);
-#endif
     SDL_RenderPresent(gRenderer);
   }
 

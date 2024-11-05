@@ -25,6 +25,7 @@ private:
 
 public:
   NedNesEmulator(SDL_Renderer *gRenderer);
+  NedNesEmulator(SDL_Renderer *gRenderer, std::string);
   bool loadRom(std::string);
   void unload();
   void reset();
@@ -32,6 +33,10 @@ public:
   void stepFrame();
   SDL_Texture *getNewFrame();
   void setControllerState(uint8_t n, uint8_t state);
+  std::map<uint16_t, std::string> getDissmap();
+  std::shared_ptr<NedBus> getBus() const { return EmuBus; };
+  std::shared_ptr<Ned6502> getCPU() const { return CPU; }
+  std::shared_ptr<Ned2C02> getPPU() const { return PPU; }
 };
 } // namespace NedNes
 #endif
