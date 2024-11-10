@@ -1,10 +1,14 @@
 #include "../include/NedManager.h"
+#include <SDL2/SDL_error.h>
 #include <SDL2/SDL_events.h>
 #include <SDL2/SDL_image.h>
 #include <SDL2/SDL_keycode.h>
 #include <SDL2/SDL_log.h>
+#include <SDL2/SDL_render.h>
+#include <SDL2/SDL_surface.h>
 #include <SDL2/SDL_ttf.h>
 #include <SDL2/SDL_video.h>
+#include <memory>
 using namespace NedNes;
 
 NedManager::NedManager() {
@@ -78,6 +82,9 @@ bool NedManager::Init() {
     }
   }
 
+  images["background"] = std::make_shared<Image>(
+      gRenderer, "../asset/backgrounds/background_1.png ");
+  images["background"]->setSize(WINDOW_WIDTH, WINDOW_HEIGHT);
   background =
       IMG_LoadTexture(gRenderer, "../asset/backgrounds/background_1.png");
 
@@ -86,6 +93,13 @@ bool NedManager::Init() {
   SDL_QueryTexture(header, nullptr, nullptr, &headerRect.w, &headerRect.h);
   SDL_QueryTexture(gameicon, nullptr, nullptr, &gameiconRect.w,
                    &gameiconRect.h);
+
+  SDL_Color col;
+  col.r = 0xFF;
+  col.g = 0x00;
+  col.b = 0x00;
+  PageLabel =
+      std::make_unique<Label>("Page 1", 300, 300, col, gRenderer, global_font);
   NED = NedNesEmulator(gRenderer);
   Initalized = true;
 
@@ -329,7 +343,113 @@ void NedManager::RenderPPUState() {
 
 void NedManager::RenderUI() {
 
-  SDL_RenderCopy(gRenderer, background, nullptr, nullptr);
+  /* SDL_RenderCopy(gRenderer, background, nullptr, nullptr); */
+
+  if (images["background"]) {
+    images["background"]->Render(gRenderer);
+  }
+  if (images["sex"]) {
+    (images["sex"]->Render(gRenderer));
+  }
   SDL_RenderCopy(gRenderer, header, nullptr, &headerRect);
   SDL_RenderCopy(gRenderer, gameicon, nullptr, &gameiconRect);
+  PageLabel->Render(gRenderer);
+
+  /* DrawText(gRenderer, global_font, "FUCK YOU", 300, 300, */
+  /* {0xff, 0x00, 0x00, 0xff}); */
+}
+Label::Label(std::string text_, int x, int y, SDL_Color col,
+             SDL_Renderer *renderer, TTF_Font *text_font) {
+
+  this->text = text_;
+  Pos.x = x;
+  Pos.y = y;
+  color = col;
+  this->font = text_font;
+
+  SDL_Surface *text_surface =
+      TTF_RenderText_Solid(font, this->text.c_str(), {0xFF, 0xFF, 0XFF, 0XFF});
+  if (text_surface) {
+    texture = SDL_CreateTextureFromSurface(renderer, text_surface);
+
+    if (texture) {
+      Pos.x = x;
+      Pos.y = y;
+      Pos.w = text_surface->w;
+      Pos.h = text_surface->h;
+    }
+    SDL_FreeSurface(text_surface);
+  }
+}
+void Label::Render(SDL_Renderer *renderer) const {
+  if (texture) {
+    SDL_SetTextureColorMod(texture, color.r, color.g, color.b);
+    SDL_RenderCopy(renderer, texture, nullptr, &Pos);
+  }
+}
+void Label::setText(std::string new_text, SDL_Color col, SDL_Renderer *renderer,
+                    TTF_Font *new_font) {
+  text = new_text;
+  if (new_font) {
+    this->font = new_font;
+  }
+  if (texture)
+    SDL_DestroyTexture(texture);
+  color = col;
+  SDL_Surface *text_surface =
+      TTF_RenderText_Solid(font, new_text.c_str(), {0xFF, 0xFF, 0xFF, 0xFF});
+
+  if (text_surface) {
+
+    texture = SDL_CreateTextureFromSurface(renderer, text_surface);
+
+    if (texture) {
+      Pos.w = text_surface->w;
+      Pos.h = text_surface->h;
+    }
+    SDL_FreeSurface(text_surface);
+  }
+}
+Label::~Label() {
+  SDL_Log("Label Destroyed\n");
+  if (texture)
+    SDL_DestroyTexture(texture);
+  font = nullptr;
+  texture = nullptr;
+}
+Image::Image(SDL_Renderer *gRenderer, std::string path, int x, int y) {
+  texture = IMG_LoadTexture(gRenderer, path.c_str());
+  if (!texture) {
+    SDL_Log("Error: %s", SDL_GetError());
+  } else {
+    rect.x = x;
+    rect.y = y;
+    SDL_QueryTexture(texture, nullptr, nullptr, &rect.w, &rect.h);
+  }
+}
+
+Image::~Image() {
+  if (texture) {
+    SDL_DestroyTexture(texture);
+  }
+  texture = nullptr;
+  SDL_Log("image destroyed\n");
+}
+void Image::Render(SDL_Renderer *renderer) const {
+  if (texture)
+    SDL_RenderCopy(renderer, texture, nullptr, &rect);
+}
+
+Button::Button(std::string str_txt, int x, int y, SDL_Color col,
+               SDL_Renderer *renderer, TTF_Font *font,
+               std::shared_ptr<Image> icon_) {
+
+  text = std::make_unique<Label>(str_txt, x, y, col, renderer, font);
+
+  icon = icon_;
+  rect = {x, y, text->getRect().w + icon->getRect().w,
+          std::max(icon->getRect().h, text->getRect().h)};
+}
+void Button::HandleEvents(SDL_Event &event) {
+  // handle event
 }

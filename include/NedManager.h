@@ -7,11 +7,74 @@
 #include <SDL2/SDL_gamecontroller.h>
 #include <SDL2/SDL_image.h>
 #include <cstdint>
+#include <memory>
 #include <set>
 namespace NedNes {
+class Label {
 
+private:
+  std::string text;
+  TTF_Font *font = nullptr;
+  SDL_Rect Pos;
+  SDL_Color color;
+  SDL_Texture *texture = nullptr;
+
+public:
+  Label() = default;
+  Label(std::string, int x, int y, SDL_Color col, SDL_Renderer *,
+        TTF_Font *font = nullptr);
+  ~Label();
+  SDL_Rect getRect() const { return Pos; };
+  void Render(SDL_Renderer *) const;
+  std::string getText() const { return text; };
+  SDL_Color getColor() const { return color; }
+  void setText(std::string text, SDL_Color col, SDL_Renderer *,
+               TTF_Font *font = nullptr);
+  void setPos(int x, int y) {
+    Pos.x = x;
+    Pos.y = y;
+  }
+};
+class Image {
+private:
+  SDL_Texture *texture = nullptr;
+  SDL_Rect rect = {0, 0, 0, 0};
+
+public:
+  Image() = default;
+  Image(SDL_Renderer *, std::string path, int x = 0, int y = 0);
+  ~Image();
+  SDL_Rect getRect() const { return rect; }
+  void setPos(int x, int y) {
+    rect.x = x;
+    rect.y = y;
+  }
+  void setSize(int w, int h) {
+    rect.w = w;
+    rect.h = h;
+  }
+  void Render(SDL_Renderer *renderer) const;
+};
+
+class Button {
+
+  using Callback = std::function<void(void *)>;
+  void Render() const;
+
+  Button(std::string, int x, int y, SDL_Color col, SDL_Renderer *,
+         TTF_Font *font = nullptr, std::shared_ptr<Image> icon = nullptr);
+  void HandleEvents(SDL_Event &);
+
+private:
+  SDL_Rect rect = {0, 0, 0, 0};
+  bool hovered = false;
+  bool pressed = false;
+  std::unique_ptr<Label> text;
+  std::shared_ptr<Image> icon;
+  Callback callback = nullptr;
+};
 class NedManager {
-  // singleton instance of the emulaotr
+  // singleton of the emulaotr
   // TODO: exception handling
 private:
   NedNesEmulator NED;
@@ -22,6 +85,8 @@ private:
   bool Initalized = false;
   SDL_Window *gWindow = nullptr;
   SDL_Renderer *gRenderer = nullptr;
+
+  std::map<std::string, std::shared_ptr<Image>> images;
 
   // window parameters
   int WINDOW_WIDTH = 800;
@@ -72,6 +137,7 @@ private:
 
   SDL_Rect headerRect = {250, 90, 0, 0};
   SDL_Rect gameiconRect{450, 200, 0};
+  std::unique_ptr<Label> PageLabel;
   void RenderUI();
 
 public:
