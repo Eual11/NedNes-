@@ -15,7 +15,7 @@ namespace NedNes {
 class NedNesEmulator {
 
 private:
-  std::shared_ptr<Ned6502> CPU;
+  std::shared_ptr<Ned6502> CPU = nullptr;
   std::shared_ptr<Ned2C02> PPU;
   std::shared_ptr<Ned2A03> APU;
   std::shared_ptr<NedBus> EmuBus;
@@ -24,6 +24,8 @@ private:
   std::shared_ptr<NedJoypad> joypad2;
 
 public:
+  NedNesEmulator() = default;
+
   NedNesEmulator(SDL_Renderer *gRenderer);
   NedNesEmulator(SDL_Renderer *gRenderer, std::string);
   bool loadRom(std::string);
