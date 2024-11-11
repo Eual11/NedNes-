@@ -66,7 +66,7 @@ bool NedManager::Init() {
     fprintf(stderr, "Couldn't Initalize TTF: %s \n", TTF_GetError());
     exit(1);
   }
-  global_font = TTF_OpenFont("../asset/font/PixelEmulator-xq08.ttf", 17);
+  global_font = TTF_OpenFont("../asset/font/Pixeboy.ttf", 39);
   if (!global_font) {
     fprintf(stderr, "Failed to Open Font: %s", TTF_GetError());
   } else {
@@ -85,6 +85,17 @@ bool NedManager::Init() {
   images["background"] = std::make_shared<Image>(
       gRenderer, "../asset/backgrounds/background_1.png ");
   images["background"]->setSize(WINDOW_WIDTH, WINDOW_HEIGHT);
+
+  images["play_icon"] =
+      std::make_shared<Image>(gRenderer, "../asset/btn_icons/play_icon.png ");
+
+  SDL_Color color = {0xFF, 0x00, 0x00, 0xFF}; // Assuming 0xFF is for opacity
+  auto btn = std::make_shared<Button>("Play", 0, 0, color, gRenderer,
+                                      global_font, images["play_icon"]);
+  btn->setOnHover([]() { SDL_Log("Fuck Me\n"); });
+  btn->setOnClick(
+      [this]() { this->RunProgram("../rom/games/Contra (U).nes"); });
+  /* buttons.push_back(btn); */
   background =
       IMG_LoadTexture(gRenderer, "../asset/backgrounds/background_1.png");
 
@@ -194,6 +205,12 @@ void NedManager::Run() {
   while (!Quit) {
     while (SDL_PollEvent(&cur_event)) {
       HandleEvents(cur_event);
+
+      if (!gameRunning) {
+        for (auto &btn : buttons) {
+          btn->HandleEvents(cur_event);
+        }
+      }
     }
     SDL_SetRenderDrawColor(gRenderer, 0x00, 0x00, 0xff, 0x00);
     SDL_RenderClear(gRenderer);
@@ -204,8 +221,6 @@ void NedManager::Run() {
       if (!gamePaused) {
         NED.stepFrame();
       }
-      /* RenderCPUState(); */
-      /* RenderPPUState(); */
       SDL_RenderCopy(gRenderer, NED.getNewFrame(), nullptr, &scrArea);
     } else {
       // render UI
@@ -233,17 +248,12 @@ void NedManager::HandleEvents(SDL_Event &event) {
     switch (event.key.keysym.sym) {
     case SDLK_ESCAPE: {
       // quit if game is running
-      NED.unload();
-      gameRunning = false;
+
+      HaltEmulator();
       break;
     }
     case SDLK_p: {
-      if (!gameRunning) {
-        if (NED.loadRom("../rom/games/Super Mario Bros (E).nes")) {
-          gamePaused = false;
-          gameRunning = true;
-        }
-      }
+      RunProgram("../rom/games/Super Mario Bros (E).nes");
       break;
     }
     }
@@ -348,15 +358,28 @@ void NedManager::RenderUI() {
   if (images["background"]) {
     images["background"]->Render(gRenderer);
   }
-  if (images["sex"]) {
-    (images["sex"]->Render(gRenderer));
+  if (images["play_icon"]) {
+    /* (images["play_icon"]->Render(gRenderer)); */
   }
   SDL_RenderCopy(gRenderer, header, nullptr, &headerRect);
   SDL_RenderCopy(gRenderer, gameicon, nullptr, &gameiconRect);
   PageLabel->Render(gRenderer);
+  for (auto &btn : buttons) {
+    btn->Render(gRenderer);
+  }
+}
 
-  /* DrawText(gRenderer, global_font, "FUCK YOU", 300, 300, */
-  /* {0xff, 0x00, 0x00, 0xff}); */
+void NedManager::RunProgram(std::string path) {
+  if (!gameRunning) {
+    if (NED.loadRom("../rom/games/Super Mario Bros (E).nes")) {
+      gamePaused = false;
+      gameRunning = true;
+    }
+  }
+}
+void NedManager::HaltEmulator() {
+  NED.unload();
+  gameRunning = false;
 }
 Label::Label(std::string text_, int x, int y, SDL_Color col,
              SDL_Renderer *renderer, TTF_Font *text_font) {
@@ -449,7 +472,41 @@ Button::Button(std::string str_txt, int x, int y, SDL_Color col,
   icon = icon_;
   rect = {x, y, text->getRect().w + icon->getRect().w,
           std::max(icon->getRect().h, text->getRect().h)};
+  text->setPos(rect.x + icon_->getRect().w, y);
 }
 void Button::HandleEvents(SDL_Event &event) {
-  // handle event
+
+  int Mx = event.motion.x;
+  int My = event.motion.y;
+
+  int x = rect.x;
+  int y = rect.y;
+  int w = rect.w;
+  int h = rect.h;
+
+  if ((Mx <= x + w) && (Mx >= x) && (My >= y) && (My <= y + h)) {
+    bool hovered = true;
+    if (onHover) {
+      onHover();
+    }
+  } else
+    hovered = false;
+
+  if (event.type == SDL_MOUSEBUTTONDOWN) {
+    if (event.button.button == SDL_BUTTON_LEFT) {
+      if (onClick) {
+        SDL_Log("test\n");
+        onClick();
+      }
+    }
+  }
+}
+
+void Button::Render(SDL_Renderer *renderer) const {
+  if (icon) {
+    icon->Render(renderer);
+  }
+  if (text) {
+    text->Render(renderer);
+  }
 }

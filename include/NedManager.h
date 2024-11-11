@@ -9,6 +9,7 @@
 #include <cstdint>
 #include <memory>
 #include <set>
+
 namespace NedNes {
 class Label {
 
@@ -57,12 +58,14 @@ public:
 };
 
 class Button {
-
-  using Callback = std::function<void(void *)>;
-  void Render() const;
+public:
+  using Callback = std::function<void()>;
+  void Render(SDL_Renderer *) const;
 
   Button(std::string, int x, int y, SDL_Color col, SDL_Renderer *,
          TTF_Font *font = nullptr, std::shared_ptr<Image> icon = nullptr);
+  void setOnClick(Callback cbk) { onClick = cbk; };
+  void setOnHover(Callback cbk) { onHover = cbk; };
   void HandleEvents(SDL_Event &);
 
 private:
@@ -71,8 +74,30 @@ private:
   bool pressed = false;
   std::unique_ptr<Label> text;
   std::shared_ptr<Image> icon;
-  Callback callback = nullptr;
+  Callback onClick = nullptr;
+  Callback onHover = nullptr;
 };
+
+class SelectionMenu {
+private:
+  std::vector<std::unique_ptr<Label>> labels;
+  std::shared_ptr<Image> select_icon;
+  SDL_Rect rect = {0, 0, 0, 0};
+  SDL_Color text_color;
+  SDL_Color highlight_color;
+  int idx = 0;
+
+public:
+  SDL_Rect getRect() const { return rect; }
+  int getSelectedIDX() const { return idx; }
+  void setColor(SDL_Color col) {text_color = col;}
+  void setHighlightColor(SDL_Color col) {highlight_color = col;}
+  void setPos(int x, int y) {rect.x = x; rect.y =y;}
+  void addLabel(std::string text);
+  void addLabels(std::vector<std::string>);
+  void Render(SDL_Renderer* ) const;
+};
+
 class NedManager {
   // singleton of the emulaotr
   // TODO: exception handling
@@ -87,6 +112,8 @@ private:
   SDL_Renderer *gRenderer = nullptr;
 
   std::map<std::string, std::shared_ptr<Image>> images;
+
+  std::vector<std::shared_ptr<Button>> buttons;
 
   // window parameters
   int WINDOW_WIDTH = 800;
@@ -128,9 +155,7 @@ private:
   void RenderCPUState();
   void RenderPPUState();
   std::map<uint16_t, std::string> disMap;
-
   // UI STUFF
-  //
   SDL_Texture *background = nullptr;
   SDL_Texture *header = nullptr;
   SDL_Texture *gameicon = nullptr;
@@ -138,6 +163,7 @@ private:
   SDL_Rect headerRect = {250, 90, 0, 0};
   SDL_Rect gameiconRect{450, 200, 0};
   std::unique_ptr<Label> PageLabel;
+
   void RenderUI();
 
 public:
@@ -147,6 +173,8 @@ public:
   void Close();
   void Run();
   void HandleEvents(SDL_Event &);
+  void RunProgram(std::string);
+  void HaltEmulator();
 };
 }; // namespace NedNes
 
