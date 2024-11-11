@@ -9,6 +9,7 @@
 #include <SDL2/SDL_ttf.h>
 #include <SDL2/SDL_video.h>
 #include <memory>
+#include <string>
 using namespace NedNes;
 
 NedManager::NedManager() {
@@ -88,14 +89,16 @@ bool NedManager::Init() {
 
   images["play_icon"] =
       std::make_shared<Image>(gRenderer, "../asset/btn_icons/play_icon.png ");
+  images["cheveron"] =
+      std::make_shared<Image>(gRenderer, "../asset/btn_icons/cheveron.png");
 
-  SDL_Color color = {0xFF, 0x00, 0x00, 0xFF}; // Assuming 0xFF is for opacity
-  auto btn = std::make_shared<Button>("Play", 0, 0, color, gRenderer,
+  auto btn = std::make_shared<Button>("Play", 300, 200, PageTextColor,
+                                      PageHighlightColor, gRenderer,
                                       global_font, images["play_icon"]);
   btn->setOnHover([]() { SDL_Log("Fuck Me\n"); });
   btn->setOnClick(
       [this]() { this->RunProgram("../rom/games/Contra (U).nes"); });
-  /* buttons.push_back(btn); */
+  buttons.push_back(btn);
   background =
       IMG_LoadTexture(gRenderer, "../asset/backgrounds/background_1.png");
 
@@ -109,8 +112,12 @@ bool NedManager::Init() {
   col.r = 0xFF;
   col.g = 0x00;
   col.b = 0x00;
-  PageLabel =
-      std::make_unique<Label>("Page 1", 300, 300, col, gRenderer, global_font);
+  PageLabel = std::make_unique<Label>("Page 1", 300, 300, PageTextColor,
+                                      gRenderer, global_font);
+  GameMenu = std::make_unique<SelectionMenu>(30, 100, PageTextColor,
+                                             PageHighlightColor, gRenderer,
+                                             global_font, images["cheveron"]);
+  GameMenu->addLabels({"Test", "Something", "Here", "Must Work", "Empty"});
   NED = NedNesEmulator(gRenderer);
   Initalized = true;
 
@@ -210,6 +217,7 @@ void NedManager::Run() {
         for (auto &btn : buttons) {
           btn->HandleEvents(cur_event);
         }
+        GameMenu->HandleEvents(cur_event);
       }
     }
     SDL_SetRenderDrawColor(gRenderer, 0x00, 0x00, 0xff, 0x00);
@@ -248,12 +256,19 @@ void NedManager::HandleEvents(SDL_Event &event) {
     switch (event.key.keysym.sym) {
     case SDLK_ESCAPE: {
       // quit if game is running
-
       HaltEmulator();
       break;
     }
     case SDLK_p: {
       RunProgram("../rom/games/Super Mario Bros (E).nes");
+      break;
+    }
+    case SDLK_RETURN: {
+      SDL_Log("on %d", GameMenu->getSelectedIDX());
+      break;
+    }
+    case SDLK_c: {
+      GameMenu->Clear();
       break;
     }
     }
@@ -367,6 +382,7 @@ void NedManager::RenderUI() {
   for (auto &btn : buttons) {
     btn->Render(gRenderer);
   }
+  GameMenu->Render();
 }
 
 void NedManager::RunProgram(std::string path) {
@@ -463,16 +479,25 @@ void Image::Render(SDL_Renderer *renderer) const {
     SDL_RenderCopy(renderer, texture, nullptr, &rect);
 }
 
-Button::Button(std::string str_txt, int x, int y, SDL_Color col,
-               SDL_Renderer *renderer, TTF_Font *font,
+Button::Button(std::string str_txt, int x, int y, SDL_Color tcol,
+               SDL_Color hcol, SDL_Renderer *renderer, TTF_Font *font,
                std::shared_ptr<Image> icon_) {
 
-  text = std::make_unique<Label>(str_txt, x, y, col, renderer, font);
+  text = std::make_unique<Label>(str_txt, x, y, tcol, renderer, font);
 
+  text_color = tcol;
+  highlight_color = hcol;
   icon = icon_;
-  rect = {x, y, text->getRect().w + icon->getRect().w,
-          std::max(icon->getRect().h, text->getRect().h)};
-  text->setPos(rect.x + icon_->getRect().w, y);
+  if (icon) {
+    icon->setPos(x, y);
+    rect = {x, y, text->getRect().w + icon->getRect().w,
+            std::max(icon->getRect().h, text->getRect().h)};
+    text->setPos(x + icon_->getRect().w + gap, y + rect.h / 4);
+
+  } else {
+    rect = {x, y, text->getRect().w, text->getRect().h};
+    text->setPos(x, y);
+  }
 }
 void Button::HandleEvents(SDL_Event &event) {
 
@@ -485,7 +510,7 @@ void Button::HandleEvents(SDL_Event &event) {
   int h = rect.h;
 
   if ((Mx <= x + w) && (Mx >= x) && (My >= y) && (My <= y + h)) {
-    bool hovered = true;
+    hovered = true;
     if (onHover) {
       onHover();
     }
@@ -507,6 +532,90 @@ void Button::Render(SDL_Renderer *renderer) const {
     icon->Render(renderer);
   }
   if (text) {
+    text->setColor(text_color);
+    if (hovered) {
+      text->setColor(highlight_color);
+    }
     text->Render(renderer);
   }
 }
+SelectionMenu::SelectionMenu(int x, int y, SDL_Color tcol, SDL_Color hcol,
+                             SDL_Renderer *_renderer, TTF_Font *font,
+                             std::shared_ptr<Image> ico) {
+  rect.x = x;
+  rect.y = y;
+  text_color = tcol;
+  highlight_color = hcol;
+  renderer = _renderer;
+  this->font = font;
+  select_icon = ico;
+}
+
+void SelectionMenu::addLabel(std::string text) {
+  text = std::to_string(selection_labels.size()) + ". " + text;
+
+  int x = rect.x;
+  int y = rect.y + rect.h;
+  auto new_label =
+      std::make_unique<Label>(text, x, y, text_color, renderer, font);
+
+  rect.h += (new_label->getRect().h + gap);
+  selection_labels.push_back(std::move(new_label));
+}
+void SelectionMenu::addLabels(std::vector<std::string> texts) {
+
+  for (auto &lb : texts) {
+    addLabel(lb);
+  }
+}
+void SelectionMenu::HandleEvents(SDL_Event &event) {
+  if (event.type == SDL_KEYDOWN) {
+
+    switch (event.key.keysym.sym) {
+    case SDLK_DOWN: {
+      if (selection_labels.empty()) {
+        idx = 0;
+      } else
+        idx = (idx + 1) % selection_labels.size();
+      break;
+      ;
+    }
+    case SDLK_UP: {
+      if (selection_labels.empty())
+        idx = 0;
+      else {
+        idx -= 1;
+        if (idx < 0) {
+          idx = selection_labels.size() - 1;
+        }
+      }
+
+      break;
+    }
+    case SDLK_RETURN: {
+      break;
+    }
+    }
+  }
+}
+void SelectionMenu::Render() const {
+  int i = 0;
+  for (auto &label : selection_labels) {
+
+    if (i == idx) {
+      label->setColor(highlight_color);
+      if (select_icon) {
+        select_icon->setPos(label->getRect().x - select_icon->getRect().w,
+                            label->getRect().y - 2);
+      }
+    } else {
+      label->setColor(text_color);
+    }
+    label->Render(renderer);
+    i += 1;
+  }
+  if (select_icon && !selection_labels.empty())
+    select_icon->Render(renderer);
+}
+
+void SelectionMenu::Clear() { selection_labels.clear(); }

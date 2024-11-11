@@ -6,6 +6,7 @@
 #include "RenderUtils.h"
 #include <SDL2/SDL_gamecontroller.h>
 #include <SDL2/SDL_image.h>
+#include <SDL2/SDL_ttf.h>
 #include <cstdint>
 #include <memory>
 #include <set>
@@ -35,6 +36,7 @@ public:
     Pos.x = x;
     Pos.y = y;
   }
+  void setColor(SDL_Color col) { color = col; }
 };
 class Image {
 private:
@@ -62,16 +64,30 @@ public:
   using Callback = std::function<void()>;
   void Render(SDL_Renderer *) const;
 
-  Button(std::string, int x, int y, SDL_Color col, SDL_Renderer *,
-         TTF_Font *font = nullptr, std::shared_ptr<Image> icon = nullptr);
+  Button(std::string, int x, int y, SDL_Color tcol, SDL_Color hcol,
+         SDL_Renderer *, TTF_Font *font = nullptr,
+         std::shared_ptr<Image> icon = nullptr);
   void setOnClick(Callback cbk) { onClick = cbk; };
   void setOnHover(Callback cbk) { onHover = cbk; };
   void HandleEvents(SDL_Event &);
+  void setPosition(int x, int y) {
+    if (icon) {
+      rect = {x, y, text->getRect().w + icon->getRect().w,
+              std::max(icon->getRect().h, text->getRect().h)};
+      text->setPos(rect.x + icon->getRect().w, y);
+    } else {
+      rect = {x, y, text->getRect().w, text->getRect().h};
+      text->setPos(x, y);
+    }
+  }
 
 private:
   SDL_Rect rect = {0, 0, 0, 0};
+  SDL_Color text_color;
+  SDL_Color highlight_color;
   bool hovered = false;
   bool pressed = false;
+  int gap = 8;
   std::unique_ptr<Label> text;
   std::shared_ptr<Image> icon;
   Callback onClick = nullptr;
@@ -80,22 +96,42 @@ private:
 
 class SelectionMenu {
 private:
-  std::vector<std::unique_ptr<Label>> labels;
+  std::vector<std::unique_ptr<Label>> selection_labels;
   std::shared_ptr<Image> select_icon;
   SDL_Rect rect = {0, 0, 0, 0};
   SDL_Color text_color;
   SDL_Color highlight_color;
   int idx = 0;
+  TTF_Font *font = nullptr;
+  int gap = 16;
+  SDL_Renderer *renderer = nullptr;
 
 public:
+  SelectionMenu() = default;
+  SelectionMenu(int x, int y, SDL_Color tcol, SDL_Color hcol,
+                SDL_Renderer *renderer, TTF_Font *font,
+                std::shared_ptr<Image> ico = nullptr);
   SDL_Rect getRect() const { return rect; }
-  int getSelectedIDX() const { return idx; }
-  void setColor(SDL_Color col) {text_color = col;}
-  void setHighlightColor(SDL_Color col) {highlight_color = col;}
-  void setPos(int x, int y) {rect.x = x; rect.y =y;}
+  int getSelectedIDX() const {
+    if (selection_labels.empty())
+      return -1;
+    return idx;
+  }
+  void setColor(SDL_Color col) { text_color = col; }
+  void setFont(TTF_Font *font) { this->font = font; }
+  void setHighlightColor(SDL_Color col) { highlight_color = col; }
+  void setPos(int x, int y) {
+    rect.x = x;
+    rect.y = y;
+  }
   void addLabel(std::string text);
   void addLabels(std::vector<std::string>);
-  void Render(SDL_Renderer* ) const;
+  void Render() const;
+  void selectIdx(unsigned int new_idx) {
+    idx = new_idx % selection_labels.size();
+  }
+  void HandleEvents(SDL_Event &);
+  void Clear();
 };
 
 class NedManager {
@@ -155,6 +191,7 @@ private:
   void RenderCPUState();
   void RenderPPUState();
   std::map<uint16_t, std::string> disMap;
+
   // UI STUFF
   SDL_Texture *background = nullptr;
   SDL_Texture *header = nullptr;
@@ -163,6 +200,9 @@ private:
   SDL_Rect headerRect = {250, 90, 0, 0};
   SDL_Rect gameiconRect{450, 200, 0};
   std::unique_ptr<Label> PageLabel;
+  std::unique_ptr<SelectionMenu> GameMenu;
+  SDL_Color PageTextColor = {0x48, 0x24, 0x13};
+  SDL_Color PageHighlightColor = {0x0D, 0x79, 0xDE};
 
   void RenderUI();
 
