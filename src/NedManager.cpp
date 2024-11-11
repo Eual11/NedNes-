@@ -82,23 +82,41 @@ bool NedManager::Init() {
       }
     }
   }
+  /**/
+  /* images["background"] = std::make_shared<Image>( */
+  /*     gRenderer, "../asset/backgrounds/background_1.png "); */
+  /**/
+  loadImage("background", "../asset/backgrounds/background_1.png", WINDOW_WIDTH,
+            WINDOW_HEIGHT);
 
-  images["background"] = std::make_shared<Image>(
-      gRenderer, "../asset/backgrounds/background_1.png ");
-  images["background"]->setSize(WINDOW_WIDTH, WINDOW_HEIGHT);
+  loadImage("play_icon", "../asset/btn_icons/play_icon.png");
+  loadImage("next_icon", "../asset/btn_icons/next_icon.png");
+  loadImage("prev_icon", "../asset/btn_icons/prev_icon.png");
+  loadImage("exit_icon", "../asset/btn_icons/exit_icon.png");
+  loadImage("cheveron", "../asset/btn_icons/cheveron.png");
+  loadImage("music_icon", "../asset/btn_icons/music Icon.png", 32, 32);
+  images["music_icon"]->setPos(700, 105);
 
-  images["play_icon"] =
-      std::make_shared<Image>(gRenderer, "../asset/btn_icons/play_icon.png ");
-  images["cheveron"] =
-      std::make_shared<Image>(gRenderer, "../asset/btn_icons/cheveron.png");
+  auto playBtn = createButton("Play", 300, 200, images["play_icon"]);
+  playBtn->setOnClick([this]() {
+    int idx = GameMenu->getSelectedIDX();
+    if (idx >= 0 && idx < programs_list.size()) {
+      RunProgram(programs_list[idx].second);
+    }
+  });
 
-  auto btn = std::make_shared<Button>("Play", 300, 200, PageTextColor,
-                                      PageHighlightColor, gRenderer,
-                                      global_font, images["play_icon"]);
-  btn->setOnHover([]() { SDL_Log("Fuck Me\n"); });
-  btn->setOnClick(
-      [this]() { this->RunProgram("../rom/games/Contra (U).nes"); });
-  buttons.push_back(btn);
+  auto nextBtn = createButton("Next", 0, 0, images["next_icon"]);
+  nextBtn->setOnClick([this] { UpdateGameMenu(current_page + 1); });
+
+  auto prevBtn = createButton("Prev", 0, 0, images["prev_icon"]);
+  prevBtn->setOnClick([this] { UpdateGameMenu(current_page - 1); });
+  auto exitBtn = createButton("Exit", 0, 0, images["exit_icon"]);
+  exitBtn->setOnClick([this]() { Quit = true; });
+
+  // Arrange buttons horizontally
+  arrangeButtonsHorizontally(25, 440,
+                             20); // Start from (300, 400) with 20px gap
+
   background =
       IMG_LoadTexture(gRenderer, "../asset/backgrounds/background_1.png");
 
@@ -112,12 +130,12 @@ bool NedManager::Init() {
   col.r = 0xFF;
   col.g = 0x00;
   col.b = 0x00;
-  PageLabel = std::make_unique<Label>("Page 1", 300, 300, PageTextColor,
+  PageLabel = std::make_unique<Label>("Page 1", 25, 485, PageTextColor,
                                       gRenderer, global_font);
-  GameMenu = std::make_unique<SelectionMenu>(30, 100, PageTextColor,
+  GameMenu = std::make_unique<SelectionMenu>(60, 160, PageTextColor,
                                              PageHighlightColor, gRenderer,
                                              global_font, images["cheveron"]);
-  GameMenu->addLabels({"Test", "Something", "Here", "Must Work", "Empty"});
+  UpdateGameMenu(current_page);
   NED = NedNesEmulator(gRenderer);
   Initalized = true;
 
@@ -238,6 +256,7 @@ void NedManager::Run() {
   }
   Close();
 }
+
 void NedManager::HandleEvents(SDL_Event &event) {
   switch (event.type) {
   case SDL_QUIT: {
@@ -260,11 +279,22 @@ void NedManager::HandleEvents(SDL_Event &event) {
       break;
     }
     case SDLK_p: {
-      RunProgram("../rom/games/Super Mario Bros (E).nes");
+
+      UpdateGameMenu(current_page - 1);
+      break;
+    }
+    case SDLK_n: {
+      UpdateGameMenu(current_page + 1);
       break;
     }
     case SDLK_RETURN: {
-      SDL_Log("on %d", GameMenu->getSelectedIDX());
+      //  SDL_Log();
+      int idx = GameMenu->getSelectedIDX();
+
+      if (idx >= 0 && idx < programs_list.size()) {
+        SDL_Log("%d is idx\n", idx);
+        RunProgram(programs_list[idx].second);
+      }
       break;
     }
     case SDLK_c: {
@@ -373,8 +403,8 @@ void NedManager::RenderUI() {
   if (images["background"]) {
     images["background"]->Render(gRenderer);
   }
-  if (images["play_icon"]) {
-    /* (images["play_icon"]->Render(gRenderer)); */
+  if (images["music_icon"]) {
+    (images["music_icon"]->Render(gRenderer));
   }
   SDL_RenderCopy(gRenderer, header, nullptr, &headerRect);
   SDL_RenderCopy(gRenderer, gameicon, nullptr, &gameiconRect);
@@ -387,7 +417,7 @@ void NedManager::RenderUI() {
 
 void NedManager::RunProgram(std::string path) {
   if (!gameRunning) {
-    if (NED.loadRom("../rom/games/Super Mario Bros (E).nes")) {
+    if (NED.loadRom(path)) {
       gamePaused = false;
       gameRunning = true;
     }
@@ -396,6 +426,26 @@ void NedManager::RunProgram(std::string path) {
 void NedManager::HaltEmulator() {
   NED.unload();
   gameRunning = false;
+}
+void NedManager::UpdateGameMenu(int page) {
+
+  if (page * program_count_per_page < programs_list.size() && page >= 0) {
+
+    int start_idx = program_count_per_page * page;
+    GameMenu->Clear();
+    int i = 0;
+    while ((start_idx + i) < programs_list.size() &&
+           i < program_count_per_page) {
+      GameMenu->addLabel(programs_list[start_idx + i].first);
+      i += 1;
+    }
+    current_page = page;
+    if (PageLabel) {
+      PageLabel->setText("Page " + std::to_string(current_page + 1),
+                         PageTextColor, gRenderer, global_font);
+    }
+    SDL_Log("Now on page %d\n", current_page);
+  }
 }
 Label::Label(std::string text_, int x, int y, SDL_Color col,
              SDL_Renderer *renderer, TTF_Font *text_font) {
@@ -503,7 +553,6 @@ void Button::HandleEvents(SDL_Event &event) {
 
   int Mx = event.motion.x;
   int My = event.motion.y;
-
   int x = rect.x;
   int y = rect.y;
   int w = rect.w;
@@ -517,10 +566,10 @@ void Button::HandleEvents(SDL_Event &event) {
   } else
     hovered = false;
 
-  if (event.type == SDL_MOUSEBUTTONDOWN) {
+  if (event.type == SDL_MOUSEBUTTONDOWN && (Mx <= x + w) && (Mx >= x) &&
+      (My >= y) && (My <= y + h)) {
     if (event.button.button == SDL_BUTTON_LEFT) {
       if (onClick) {
-        SDL_Log("test\n");
         onClick();
       }
     }
@@ -552,7 +601,7 @@ SelectionMenu::SelectionMenu(int x, int y, SDL_Color tcol, SDL_Color hcol,
 }
 
 void SelectionMenu::addLabel(std::string text) {
-  text = std::to_string(selection_labels.size()) + ". " + text;
+  text = std::to_string(selection_labels.size() + 1) + ". " + text;
 
   int x = rect.x;
   int y = rect.y + rect.h;
@@ -592,9 +641,6 @@ void SelectionMenu::HandleEvents(SDL_Event &event) {
 
       break;
     }
-    case SDLK_RETURN: {
-      break;
-    }
     }
   }
 }
@@ -605,7 +651,7 @@ void SelectionMenu::Render() const {
     if (i == idx) {
       label->setColor(highlight_color);
       if (select_icon) {
-        select_icon->setPos(label->getRect().x - select_icon->getRect().w,
+        select_icon->setPos(label->getRect().x - select_icon->getRect().w - gap,
                             label->getRect().y - 2);
       }
     } else {
@@ -618,4 +664,34 @@ void SelectionMenu::Render() const {
     select_icon->Render(renderer);
 }
 
-void SelectionMenu::Clear() { selection_labels.clear(); }
+void SelectionMenu::Clear() {
+  selection_labels.clear();
+  /* rect = {0, 0, 0, 0}; */
+  idx = 0;
+}
+std::shared_ptr<Button> NedManager::createButton(const std::string &text, int x,
+                                                 int y,
+                                                 std::shared_ptr<Image> icon) {
+  auto button =
+      std::make_shared<Button>(text, x, y, PageTextColor, PageHighlightColor,
+                               gRenderer, global_font, icon);
+  buttons.push_back(button);
+  return button;
+}
+void NedManager::loadImage(const std::string &key, const std::string &filePath,
+                           int width, int height) {
+  auto image = std::make_shared<Image>(gRenderer, filePath);
+  if (width > 0 && height > 0) {
+    image->setSize(width, height);
+  }
+  images[key] = std::move(image);
+}
+void NedManager::arrangeButtonsHorizontally(int startX, int startY,
+                                            int spacing) {
+  int xPos = startX;
+  for (auto &button : buttons) {
+    button->setPosition(xPos, startY); // Set button position
+    xPos +=
+        button->getRect().w + spacing; // Move to the next position with spacing
+  }
+}

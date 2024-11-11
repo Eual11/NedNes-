@@ -72,14 +72,17 @@ public:
   void HandleEvents(SDL_Event &);
   void setPosition(int x, int y) {
     if (icon) {
+      icon->setPos(x, y);
       rect = {x, y, text->getRect().w + icon->getRect().w,
               std::max(icon->getRect().h, text->getRect().h)};
-      text->setPos(rect.x + icon->getRect().w, y);
+      text->setPos(x + icon->getRect().w + gap, y + rect.h / 4);
+
     } else {
       rect = {x, y, text->getRect().w, text->getRect().h};
       text->setPos(x, y);
     }
   }
+  SDL_Rect getRect() const { return rect; }
 
 private:
   SDL_Rect rect = {0, 0, 0, 0};
@@ -117,6 +120,7 @@ public:
       return -1;
     return idx;
   }
+  int getSize() const { return selection_labels.size(); }
   void setColor(SDL_Color col) { text_color = col; }
   void setFont(TTF_Font *font) { this->font = font; }
   void setHighlightColor(SDL_Color col) { highlight_color = col; }
@@ -198,13 +202,41 @@ private:
   SDL_Texture *gameicon = nullptr;
 
   SDL_Rect headerRect = {250, 90, 0, 0};
-  SDL_Rect gameiconRect{450, 200, 0};
+  SDL_Rect gameiconRect{550, 200, 0};
   std::unique_ptr<Label> PageLabel;
   std::unique_ptr<SelectionMenu> GameMenu;
   SDL_Color PageTextColor = {0x48, 0x24, 0x13};
   SDL_Color PageHighlightColor = {0x0D, 0x79, 0xDE};
 
+  int current_page = 0;
+  int program_count_per_page = 7;
+  int buttons_gap = 16;
+
   void RenderUI();
+
+  // Programs
+  // TODO: ability to load programs from ini file or something
+  // instead of hard coded ones
+
+  // list of programs discovered by NED
+  // Format:  Program Display Name -> Program path
+  std::vector<std::pair<std::string, std::string>> programs_list = {
+      {"Super Mario Bros", "../rom/games/Super Mario Bros (E).nes"},
+      {"Donkey Kong", "../rom/games/donkey kong.nes"},
+      {"Battle City", "../rom/games/Tank (Battle City Hack).nes"},
+      {"Dig Dug", "../rom/games/digdug.nes"},
+      {"Mega Man 1", "../rom/games/Mega Man (USA).nes"},
+      {"Contra", "../rom/games/Contra (U).nes"},
+      {"Legend of Zelda",
+       "../rom/games/Legend of Zelda, The (U) (PRG1) [!].nes"},
+
+  };
+  void UpdateGameMenu(int page);
+  std::shared_ptr<Button> createButton(const std::string &text, int x, int y,
+                                       std::shared_ptr<Image> icon);
+  void arrangeButtonsHorizontally(int startX, int startY, int spacing);
+  void loadImage(const std::string &key, const std::string &filePath,
+                 int width = 0, int height = 0);
 
 public:
   NedManager();
