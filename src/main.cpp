@@ -135,14 +135,14 @@ int main(int argc, char **argv) {
   want.freq = SAMPLE_RATE;
   want.channels = 1;
   want.format = AUDIO_S16;
-  /* want.userdata = (void *)(APU.get()); */
-  /* want.callback = AudioCallback; */
+  want.userdata = (void *)(APU.get());
+  want.callback = AudioCallback;
 
-  /* device = SDL_OpenAudioDevice(NULL, 0, &want, &have, 0); */
-  /* if (device == 0) { */
-  /*   std::cerr << "Failed to open audio: " << SDL_GetError() << std::endl; */
-  /*   return -1; */
-  /* } */
+  device = SDL_OpenAudioDevice(NULL, 0, &want, &have, 0);
+  if (device == 0) {
+    std::cerr << "Failed to open audio: " << SDL_GetError() << std::endl;
+    return -1;
+  }
 
   SDL_PauseAudioDevice(device, 0);
   printf("Program %s running with %d args\n", argv[0], argc);

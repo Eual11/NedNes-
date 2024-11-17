@@ -89,6 +89,11 @@ bool NedManager::Init() {
   loadImage("background", "../asset/backgrounds/background_1.png", WINDOW_WIDTH,
             WINDOW_HEIGHT);
 
+  SDL_Surface *icon = SDL_LoadBMP("../asset/game_icons/window_icon.bmp");
+  SDL_SetWindowIcon(this->gWindow, icon);
+
+  SDL_FreeSurface(icon);
+
   loadImage("play_icon", "../asset/btn_icons/play_icon.png");
   loadImage("next_icon", "../asset/btn_icons/next_icon.png");
   loadImage("prev_icon", "../asset/btn_icons/prev_icon.png");
@@ -511,6 +516,7 @@ Label::~Label() {
 }
 Image::Image(SDL_Renderer *gRenderer, std::string path, int x, int y) {
   texture = IMG_LoadTexture(gRenderer, path.c_str());
+
   if (!texture) {
     SDL_Log("Error: %s", SDL_GetError());
   } else {
