@@ -4,6 +4,7 @@
 #include "NedBus.h"
 #include "NedNes.h"
 #include "RenderUtils.h"
+#include <SDL2/SDL_audio.h>
 #include <SDL2/SDL_gamecontroller.h>
 #include <SDL2/SDL_image.h>
 #include <SDL2/SDL_ttf.h>
@@ -14,6 +15,7 @@
 #include <sstream>
 
 namespace NedNes {
+
 class Label {
 
 private:
@@ -139,7 +141,21 @@ public:
   void HandleEvents(SDL_Event &);
   void Clear();
 };
-
+struct WAVHeader {
+  char riff[4] = {'R', 'I', 'F', 'F'};
+  uint32_t fileSize;
+  char wave[4] = {'W', 'A', 'V', 'E'};
+  char fmt[4] = {'f', 'm', 't', ' '};
+  uint32_t fmtLength = 16;
+  uint16_t audioFormat = 1; // PCM
+  uint16_t numChannels = 1; // Mono
+  uint32_t sampleRate = 44100;
+  uint32_t byteRate;
+  uint16_t blockAlign;
+  uint16_t bitsPerSample = 16;
+  char data[4] = {'d', 'a', 't', 'a'};
+  uint32_t dataSize;
+};
 class NedManager {
   // singleton of the emulaotr
   // TODO: exception handling
@@ -153,6 +169,26 @@ private:
   SDL_Window *gWindow = nullptr;
   SDL_Renderer *gRenderer = nullptr;
 
+  // audio device handle and settings
+  SDL_AudioDeviceID device = 0;
+
+public:
+  std::vector<int16_t> audioBuffer;
+  void writeWAV(const std::string &filename,
+                const std::vector<int16_t> &audioData);
+
+public:
+  const int SAMPLE_RATE = 44100;
+  const int SAMPLE = 2048;
+  const int CHANNELS_COUNT = 1;
+  const int AUDIO_FORMAT = AUDIO_S16;
+  void SetupAudio();
+
+private:
+  // NOTE: test callback for Audio synthesis
+  //
+
+  static void Callback(void *, Uint8 *, int);
   std::map<std::string, std::shared_ptr<Image>> images;
 
   std::vector<std::shared_ptr<Button>> buttons;
@@ -163,7 +199,6 @@ private:
   // a global font and willa also act as a fallback font when we
   // implement the pages
   TTF_Font *global_font = nullptr;
-  SDL_AudioDeviceID device = 0;
 
   // current event pulled from SDL_Event queue
 

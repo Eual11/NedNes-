@@ -5,9 +5,11 @@
 #include <SDL2/SDL_keycode.h>
 #include <SDL2/SDL_log.h>
 #include <SDL2/SDL_render.h>
+#include <SDL2/SDL_stdinc.h>
 #include <SDL2/SDL_surface.h>
 #include <SDL2/SDL_ttf.h>
 #include <SDL2/SDL_video.h>
+#include <cassert>
 #include <memory>
 #include <string>
 using namespace NedNes;
@@ -67,12 +69,14 @@ bool NedManager::Init() {
     fprintf(stderr, "Couldn't Initalize TTF: %s \n", TTF_GetError());
     exit(1);
   }
+
   global_font = TTF_OpenFont("../asset/font/Pixeboy.ttf", 39);
   if (!global_font) {
     fprintf(stderr, "Failed to Open Font: %s", TTF_GetError());
   } else {
     printf("Font Loaded Successfully\n");
   }
+
   for (int i = 0; i < SDL_NumJoysticks(); i++) {
     if (SDL_IsGameController((i))) {
       SDL_GameController *ctrler = SDL_GameControllerOpen(i);
@@ -150,8 +154,10 @@ bool NedManager::Init() {
 }
 void NedManager::Close() {
 
+  writeWAV("../test.wav", audioBuffer);
   SDL_DestroyRenderer(gRenderer);
   SDL_CloseAudioDevice(device);
+  SDL_CloseAudio();
   gRenderer = nullptr;
   SDL_DestroyWindow(gWindow);
   gWindow = nullptr;
@@ -299,8 +305,6 @@ void NedManager::HandleEvents(SDL_Event &event) {
       int idx =
           GameMenu->getSelectedIDX() + current_page * program_count_per_page;
       if (idx >= 0 && idx < programs_list.size()) {
-        SDL_Log("%d is idx, program is %s\n", idx,
-                programs_list[idx].second.c_str());
         RunProgram(programs_list[idx].second);
       }
       break;
@@ -508,7 +512,6 @@ void Label::setText(std::string new_text, SDL_Color col, SDL_Renderer *renderer,
   }
 }
 Label::~Label() {
-  SDL_Log("Label Destroyed\n");
   if (texture)
     SDL_DestroyTexture(texture);
   font = nullptr;
@@ -531,7 +534,6 @@ Image::~Image() {
     SDL_DestroyTexture(texture);
   }
   texture = nullptr;
-  SDL_Log("image destroyed\n");
 }
 void Image::Render(SDL_Renderer *renderer) const {
   if (texture)
@@ -704,6 +706,85 @@ void NedManager::arrangeButtonsHorizontally(int startX, int startY,
         button->getRect().w + spacing; // Move to the next position with spacing
   }
 }
+
+void NedManager::SetupAudio() {
+
+  SDL_AudioSpec want, have;
+
+  SDL_zero(want);
+
+  want.freq = SAMPLE_RATE;
+  want.format = AUDIO_FORMAT;
+  want.channels = CHANNELS_COUNT;
+  want.samples = SAMPLE;
+  want.callback = this->Callback;
+  want.userdata = this;
+
+  device = SDL_OpenAudioDevice(NULL, 0, &want, &have, 0);
+
+  if (device == 0) {
+    std::cerr << "Failed to Open Audio: " << SDL_GetError() << std::endl;
+  } else {
+    std::cout << "Audio Device Created\n";
+  }
+
+  // unpausing Audio device
+  // NOTE: this will be changed after testing
+
+  SDL_PauseAudioDevice(device, 0);
+}
+void NedManager::writeWAV(const std::string &filename,
+                          const std::vector<int16_t> &audioData) {
+  WAVHeader header;
+  header.sampleRate = SAMPLE_RATE;
+  header.numChannels = 1;    // Mono
+  header.bitsPerSample = 16; // 16-bit samples
+  header.byteRate = SAMPLE_RATE * header.numChannels * header.bitsPerSample / 8;
+  header.blockAlign = header.numChannels * header.bitsPerSample / 8;
+  header.dataSize = audioData.size() * sizeof(int16_t);
+  header.fileSize = 36 + header.dataSize;
+
+  std::ofstream file(filename, std::ios::binary);
+  if (!file) {
+    std::cerr << "Failed to open file for writing\n";
+    return;
+  }
+
+  // Write WAV header
+  file.write((const char *)&header, sizeof(header));
+
+  // Write audio data
+  file.write((const char *)audioData.data(), header.dataSize);
+
+  file.close();
+}
+void NedManager::Callback(void *userdata, Uint8 *stream, int len) {
+
+  // silencing the buffer
+  memset(stream, 0, len);
+
+  NedManager *manager = static_cast<NedManager *>(userdata);
+  assert(manager != nullptr);
+
+  static int phase = 0;
+
+  Sint16 *buffer = (Sint16 *)(stream);
+
+  len = len / (sizeof(Sint16));
+  int amp = 10000;
+  uint16_t freq = 440; // A4
+  for (int i = 0; i < len; i++) {
+    buffer[i] = (phase < (manager->SAMPLE_RATE / (2 * freq))) ? amp : -amp;
+
+    phase++;
+
+    if (phase >= (manager->SAMPLE_RATE / freq))
+      phase = 0;
+  }
+
+  auto &ab = manager->audioBuffer;
+  ab.insert(ab.end(), buffer, buffer + len);
+}
 void NedManager::LoadConfigFile() {
 
   // open config file
@@ -737,13 +818,6 @@ void NedManager::LoadConfigFile() {
 
     if (cur_section != "")
       parsed_config[cur_section] += line + "\n";
-
-    std::cout << line << std::endl;
-  }
-
-  for (auto section : sections) {
-    std::cout << section << std::endl;
-    std::cout << parsed_config[section] << std::endl;
   }
 
   // Process games and store our lovely games

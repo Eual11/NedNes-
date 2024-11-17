@@ -9,7 +9,7 @@ set(SDL2_ttf ${NED_LIB_DIR}/SDL2_ttf.lib)
 set(SDL2_image ${NED_LIB_DIR}/SDL2_image.lib)
 
 if(WIN32)
-  add_executable(${EXECUTABLE_NAME} WIN32 ./Manager.cpp icon.rc)
+  add_executable(${EXECUTABLE_NAME} ./Manager.cpp icon.rc)
 else()
   add_executable(${EXECUTABLE_NAME} ./Manager.cpp)
 endif()
