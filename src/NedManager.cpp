@@ -127,6 +127,7 @@ bool NedManager::Init() {
   SDL_QueryTexture(gameicon, nullptr, nullptr, &gameiconRect.w,
                    &gameiconRect.h);
 
+  LoadConfigFile();
   SDL_Color col;
   col.r = 0xFF;
   col.g = 0x00;
@@ -138,7 +139,6 @@ bool NedManager::Init() {
                                              global_font, images["cheveron"]);
   UpdateGameMenu(current_page);
   NED = NedNesEmulator(gRenderer);
-  LoadConfigFile();
   Initalized = true;
 
   return true;
@@ -723,10 +723,6 @@ void NedManager::LoadConfigFile() {
 
   while (std::getline(config, line)) {
 
-    line.erase(std::remove_if(line.begin(), line.end(),
-                              [](char c) { return std::isspace(c); }),
-               line.end());
-
     if (std::find(sections.begin(), sections.end(), line) != sections.end()) {
 
       cur_section = line;
@@ -758,12 +754,14 @@ void NedManager::ProcessGamesSection() {
   std::string line;
 
   while (std::getline(prg_list, line)) {
-    size_t eq = line.find_first_of("=");
 
     // removing any Quotations
     line.erase(std::remove_if(line.begin(), line.end(),
                               [](char c) { return c == '"' || c == '\''; }),
                line.end());
+
+    size_t eq = line.find_first_of("=");
+
     std::string title = line.substr(0, eq);
     std::string path = line.substr(eq + 1);
     programs_list.push_back({title, path});

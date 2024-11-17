@@ -222,17 +222,7 @@ private:
 
   // list of programs discovered by NED
   // Format:  Program Display Name -> Program path
-  std::vector<std::pair<std::string, std::string>> programs_list = {
-      {"Super Mario Bros", "../rom/games/Super Mario Bros (E).nes"},
-      {"Donkey Kong", "../rom/games/donkey kong.nes"},
-      {"Battle City", "../rom/games/Tank (Battle City Hack).nes"},
-      {"Dig Dug", "../rom/games/digdug.nes"},
-      {"Mega Man 1", "../rom/games/Mega Man (USA).nes"},
-      {"Contra", "../rom/games/Contra (U).nes"},
-      {"Legend of Zelda",
-       "../rom/games/Legend of Zelda, The (U) (PRG1) [!].nes"},
-
-  };
+  std::vector<std::pair<std::string, std::string>> programs_list = {};
   void UpdateGameMenu(int page);
   std::shared_ptr<Button> createButton(const std::string &text, int x, int y,
                                        std::shared_ptr<Image> icon);
