@@ -666,7 +666,7 @@ void SelectionMenu::Render() const {
 
 void SelectionMenu::Clear() {
   selection_labels.clear();
-  /* rect = {0, 0, 0, 0}; */
+  rect = {rect.x, rect.y, 0, 0};
   idx = 0;
 }
 std::shared_ptr<Button> NedManager::createButton(const std::string &text, int x,

@@ -209,7 +209,7 @@ private:
   SDL_Color PageHighlightColor = {0x0D, 0x79, 0xDE};
 
   int current_page = 0;
-  int program_count_per_page = 7;
+  int program_count_per_page = 3;
   int buttons_gap = 16;
 
   void RenderUI();
