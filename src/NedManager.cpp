@@ -99,7 +99,8 @@ bool NedManager::Init() {
 
   auto playBtn = createButton("Play", 300, 200, images["play_icon"]);
   playBtn->setOnClick([this]() {
-    int idx = GameMenu->getSelectedIDX();
+    int idx =
+        GameMenu->getSelectedIDX() + current_page * program_count_per_page;
     if (idx >= 0 && idx < programs_list.size()) {
       RunProgram(programs_list[idx].second);
     }
@@ -137,6 +138,7 @@ bool NedManager::Init() {
                                              global_font, images["cheveron"]);
   UpdateGameMenu(current_page);
   NED = NedNesEmulator(gRenderer);
+  LoadConfigFile();
   Initalized = true;
 
   return true;
@@ -289,10 +291,11 @@ void NedManager::HandleEvents(SDL_Event &event) {
     }
     case SDLK_RETURN: {
       //  SDL_Log();
-      int idx = GameMenu->getSelectedIDX();
-
+      int idx =
+          GameMenu->getSelectedIDX() + current_page * program_count_per_page;
       if (idx >= 0 && idx < programs_list.size()) {
-        SDL_Log("%d is idx\n", idx);
+        SDL_Log("%d is idx, program is %s\n", idx,
+                programs_list[idx].second.c_str());
         RunProgram(programs_list[idx].second);
       }
       break;
@@ -693,5 +696,76 @@ void NedManager::arrangeButtonsHorizontally(int startX, int startY,
     button->setPosition(xPos, startY); // Set button position
     xPos +=
         button->getRect().w + spacing; // Move to the next position with spacing
+  }
+}
+void NedManager::LoadConfigFile() {
+
+  // open config file
+
+  std::fstream config("../config/config.ini", std::ios::in);
+
+  if (!config.is_open()) {
+    std::cerr << "Failed to Open Config File\n Try Creating config directory "
+                 "and a file with name config.ini\n";
+    return;
+    ;
+  }
+  // store it to parsed config
+
+  std::stringstream buffer;
+
+  std::string cur_section = "";
+
+  // a disgusting hack
+  std::vector<std::string> sections = {"[games]", "[settings]"};
+
+  std::string line;
+
+  while (std::getline(config, line)) {
+
+    line.erase(std::remove_if(line.begin(), line.end(),
+                              [](char c) { return std::isspace(c); }),
+               line.end());
+
+    if (std::find(sections.begin(), sections.end(), line) != sections.end()) {
+
+      cur_section = line;
+      continue;
+    }
+
+    if (cur_section != "")
+      parsed_config[cur_section] += line + "\n";
+
+    std::cout << line << std::endl;
+  }
+
+  for (auto section : sections) {
+    std::cout << section << std::endl;
+    std::cout << parsed_config[section] << std::endl;
+  }
+
+  // Process games and store our lovely games
+
+  ProcessGamesSection();
+  // process emulator settings
+  //
+}
+
+void NedManager::ProcessGamesSection() {
+
+  std::istringstream prg_list(parsed_config["[games]"]);
+
+  std::string line;
+
+  while (std::getline(prg_list, line)) {
+    size_t eq = line.find_first_of("=");
+
+    // removing any Quotations
+    line.erase(std::remove_if(line.begin(), line.end(),
+                              [](char c) { return c == '"' || c == '\''; }),
+               line.end());
+    std::string title = line.substr(0, eq);
+    std::string path = line.substr(eq + 1);
+    programs_list.push_back({title, path});
   }
 }

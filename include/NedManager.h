@@ -8,8 +8,10 @@
 #include <SDL2/SDL_image.h>
 #include <SDL2/SDL_ttf.h>
 #include <cstdint>
+#include <fstream>
 #include <memory>
 #include <set>
+#include <sstream>
 
 namespace NedNes {
 class Label {
@@ -209,7 +211,7 @@ private:
   SDL_Color PageHighlightColor = {0x0D, 0x79, 0xDE};
 
   int current_page = 0;
-  int program_count_per_page = 3;
+  int program_count_per_page = 5;
   int buttons_gap = 16;
 
   void RenderUI();
@@ -237,6 +239,13 @@ private:
   void arrangeButtonsHorizontally(int startX, int startY, int spacing);
   void loadImage(const std::string &key, const std::string &filePath,
                  int width = 0, int height = 0);
+
+  // loading config files
+  void LoadConfigFile();
+  std::map<std::string, std::string> parsed_config = {{"[game]", ""},
+                                                      {"[settings]", ""}};
+  void ProcessGamesSection();
+  void ProcessSettings();
 
 public:
   NedManager();
