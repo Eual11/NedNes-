@@ -103,7 +103,7 @@ public:
   float gTime = 0.0f;
   int16_t pulse1_sample;
   SDL_AudioDeviceID device = 0;
-  int audio_queue_threshould = 4096 * 4;
+  int audio_queue_threshould = 4096 * 2;
 
   struct oscpulse {
     double frequency = 0;
@@ -124,12 +124,12 @@ public:
       };
 
       for (double n = 1; n < harmonics; n++) {
-        double c = n * frequency * 2.0 * pi * t;
-        a += -approxsin(c) / n;
-        b += -approxsin(c - p * n) / n;
+        double c = frequency * n * 2.0 * pi * t;
+        a += -sin(c) / n;
+        b += -sin(c - p * n) / n;
       }
 
-      return (2.0 * amplitude / pi) * (a - b);
+      return (amplitude / (2.0 * pi)) * (a - b);
     }
   };
   struct sequencer {

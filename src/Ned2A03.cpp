@@ -109,17 +109,22 @@ void Ned2A03::clock() {
       while (accumulator >= 1.0f || new_samples.size() < 512) {
         // we generated atleast once sample
         accumulator -= 1.0f;
-        double frequency_step = 2 * M_PI * 440.0f / 44100.0;
 
+        pulse1_osc.frequency =
+            1789773.0 / (16.0 * (double)(pulse1_sequencer.reload + 1));
+
+        double frequency_step = 2 * M_PI * pulse1_osc.frequency / 44100.0;
+
+        double t = phase_accumulator / (2.0 * M_PI * pulse1_osc.frequency);
+
+        double sin_sample = pulse1_osc.sample(t);
+        /* sin_sample = sin(2 * M_PI * pulse1_osc.frequency * t); */
         phase_accumulator += frequency_step;
-
         if (phase_accumulator >= 2 * M_PI)
           phase_accumulator -= 2 * M_PI;
 
-        float sin_sample = amp * sin(phase_accumulator);
-        double filtred_sample = (prev_sample + sin_sample) / 2.0f;
-        prev_sample = sin_sample;
-        pulse1_sample = (int16_t)(INT16_MAX * filtred_sample);
+        /* sin_sample = sin(phase_accumulator); */
+        pulse1_sample = (int16_t)(INT16_MAX * sin_sample);
 
         new_samples.push_back(pulse1_sample);
         audioData.push_back(pulse1_sample);
@@ -129,10 +134,6 @@ void Ned2A03::clock() {
                      new_samples.size() * sizeof(int16_t));
 
       frame_counter++;
-
-      pulse1_osc.frequency =
-          1789773.0 / (16.0 * (double)(pulse1_sequencer.reload + 1));
-
       current_sample_count++;
     }
   }
