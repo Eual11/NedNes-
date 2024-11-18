@@ -7,6 +7,7 @@
 #include <SDL2/SDL_render.h>
 #include <SDL2/SDL_stdinc.h>
 #include <SDL2/SDL_surface.h>
+#include <SDL2/SDL_timer.h>
 #include <SDL2/SDL_ttf.h>
 #include <SDL2/SDL_video.h>
 #include <cassert>
@@ -70,6 +71,7 @@ bool NedManager::Init() {
     exit(1);
   }
 
+  SetupAudio();
   global_font = TTF_OpenFont("../asset/font/Pixeboy.ttf", 39);
   if (!global_font) {
     fprintf(stderr, "Failed to Open Font: %s", TTF_GetError());
@@ -147,14 +149,14 @@ bool NedManager::Init() {
                                              PageHighlightColor, gRenderer,
                                              global_font, images["cheveron"]);
   UpdateGameMenu(current_page);
-  NED = NedNesEmulator(gRenderer);
+  NED = NedNesEmulator(gRenderer, device);
   Initalized = true;
 
   return true;
 }
 void NedManager::Close() {
 
-  writeWAV("../test.wav", audioBuffer);
+  NED.getAPU()->writeWAV("../test.wav");
   SDL_DestroyRenderer(gRenderer);
   SDL_CloseAudioDevice(device);
   SDL_CloseAudio();
@@ -717,8 +719,6 @@ void NedManager::SetupAudio() {
   want.format = AUDIO_FORMAT;
   want.channels = CHANNELS_COUNT;
   want.samples = SAMPLE;
-  want.callback = this->Callback;
-  want.userdata = this;
 
   device = SDL_OpenAudioDevice(NULL, 0, &want, &have, 0);
 
@@ -733,55 +733,36 @@ void NedManager::SetupAudio() {
 
   SDL_PauseAudioDevice(device, 0);
 }
-void NedManager::writeWAV(const std::string &filename,
-                          const std::vector<int16_t> &audioData) {
-  WAVHeader header;
-  header.sampleRate = SAMPLE_RATE;
-  header.numChannels = 1;    // Mono
-  header.bitsPerSample = 16; // 16-bit samples
-  header.byteRate = SAMPLE_RATE * header.numChannels * header.bitsPerSample / 8;
-  header.blockAlign = header.numChannels * header.bitsPerSample / 8;
-  header.dataSize = audioData.size() * sizeof(int16_t);
-  header.fileSize = 36 + header.dataSize;
 
-  std::ofstream file(filename, std::ios::binary);
-  if (!file) {
-    std::cerr << "Failed to open file for writing\n";
-    return;
-  }
-
-  // Write WAV header
-  file.write((const char *)&header, sizeof(header));
-
-  // Write audio data
-  file.write((const char *)audioData.data(), header.dataSize);
-
-  file.close();
-}
 void NedManager::Callback(void *userdata, Uint8 *stream, int len) {
 
   // silencing the buffer
   memset(stream, 0, len);
 
+  static int phase = 0;
   NedManager *manager = static_cast<NedManager *>(userdata);
   assert(manager != nullptr);
-
-  static int phase = 0;
 
   Sint16 *buffer = (Sint16 *)(stream);
 
   len = len / (sizeof(Sint16));
+  manager->getEmu()->fillAudioBuffer(buffer, len);
+#if 0
   int amp = 10000;
   uint16_t freq = 440; // A4
   for (int i = 0; i < len; i++) {
-    buffer[i] = (phase < (manager->SAMPLE_RATE / (2 * freq))) ? amp : -amp;
 
-    phase++;
+    float time = (float)(phase) / manager->SAMPLE_RATE;
+    double sine_sample = 0.5 * sin(2 * 3.14159 * 440 * time);
 
-    if (phase >= (manager->SAMPLE_RATE / freq))
-      phase = 0;
+    phase += 1;
+    if (phase >= manager->SAMPLE_RATE)
+      phase -= manager->SAMPLE_RATE;
+
+    // Scale the result to fit into the 16-bit audio format
+    buffer[i] = static_cast<int16_t>(sine_sample * INT16_MAX);
   }
-
+#endif
   auto &ab = manager->audioBuffer;
   ab.insert(ab.end(), buffer, buffer + len);
 }

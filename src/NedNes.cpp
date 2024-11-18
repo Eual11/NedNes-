@@ -1,16 +1,18 @@
 #include "../include/NedNes.h"
+#include <SDL2/SDL_audio.h>
 #include <cstdint>
 #include <memory>
 #include <stdint.h>
 
-NedNes::NedNesEmulator::NedNesEmulator(SDL_Renderer *gRenderer) {
+NedNes::NedNesEmulator::NedNesEmulator(SDL_Renderer *gRenderer,
+                                       SDL_AudioDeviceID id) {
   joypad1 = std::make_shared<NedNes::NedJoypad>();
   joypad2 = std::make_shared<NedNes::NedJoypad>();
   // setting up nednes bus
   EmuBus = std::make_shared<NedNes::NedBus>();
   CPU = std::make_shared<NedNes::Ned6502>();
   PPU = std::make_shared<NedNes::Ned2C02>(gRenderer);
-  APU = std::make_shared<NedNes::Ned2A03>();
+  APU = std::make_shared<NedNes::Ned2A03>(id);
   cart = std::make_shared<NedCartrdige>();
   PPU->connectBus(EmuBus);
   PPU->connectCart(cart);
@@ -24,14 +26,14 @@ NedNes::NedNesEmulator::NedNesEmulator(SDL_Renderer *gRenderer) {
   reset();
 }
 NedNes::NedNesEmulator::NedNesEmulator(SDL_Renderer *gRenderer,
-                                       std::string path) {
+                                       std::string path, SDL_AudioDeviceID id) {
   joypad1 = std::make_shared<NedNes::NedJoypad>();
   joypad2 = std::make_shared<NedNes::NedJoypad>();
   // setting up nednes bus
   EmuBus = std::make_shared<NedNes::NedBus>();
   CPU = std::make_shared<NedNes::Ned6502>();
   PPU = std::make_shared<NedNes::Ned2C02>(gRenderer);
-  APU = std::make_shared<NedNes::Ned2A03>();
+  APU = std::make_shared<NedNes::Ned2A03>(id);
   cart = std::make_shared<NedCartrdige>(path);
   PPU->connectBus(EmuBus);
   PPU->connectCart(cart);

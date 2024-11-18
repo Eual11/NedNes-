@@ -1,10 +1,31 @@
 #ifndef __NED2AO3__
 #define __NED2AO3__
 
+#include <SDL2/SDL_audio.h>
 #include <cstdint>
 #include <deque>
+#include <fstream>
 #include <functional>
+#include <iostream>
+#include <ostream>
+#include <string>
 #include <vector>
+struct WAVHeader {
+  char riff[4] = {'R', 'I', 'F', 'F'};
+  uint32_t fileSize;
+  char wave[4] = {'W', 'A', 'V', 'E'};
+  char fmt[4] = {'f', 'm', 't', ' '};
+  uint32_t fmtLength = 16;
+  uint16_t audioFormat = 1; // PCM
+  uint16_t numChannels = 1; // Mono
+  uint32_t sampleRate = 44100;
+  uint32_t byteRate;
+  uint16_t blockAlign;
+  uint16_t bitsPerSample = 16;
+  char data[4] = {'d', 'a', 't', 'a'};
+  uint32_t dataSize;
+};
+
 namespace NedNes {
 
 struct RingBuffer {
@@ -47,8 +68,33 @@ class Ned2A03 {
 
 public:
   int last_sample_count = 0x00;
+  std::vector<int16_t> audioData;
   int current_sample_count = 0x00;
-  Ned2A03();
+  void writeWAV(const std::string &filename) {
+    WAVHeader header;
+    header.sampleRate = 44100;
+    header.numChannels = 1;    // Mono
+    header.bitsPerSample = 16; // 16-bit samples
+    header.byteRate = 44100 * header.numChannels * header.bitsPerSample / 8;
+    header.blockAlign = header.numChannels * header.bitsPerSample / 8;
+    header.dataSize = audioData.size() * sizeof(int16_t);
+    header.fileSize = 36 + header.dataSize;
+
+    std::ofstream file(filename, std::ios::binary);
+    if (!file) {
+      std::cerr << "Failed to open file for writing\n";
+      return;
+    }
+
+    // Write WAV header
+    file.write((const char *)&header, sizeof(header));
+
+    // Write audio data
+    file.write((const char *)audioData.data(), header.dataSize);
+
+    file.close();
+  }
+  Ned2A03(SDL_AudioDeviceID id);
   ~Ned2A03() = default;
   uint8_t cpuRead(uint16_t addr);
   void cpuWrite(uint16_t addr, uint8_t data);
@@ -56,6 +102,8 @@ public:
   void reset();
   float gTime = 0.0f;
   int16_t pulse1_sample;
+  SDL_AudioDeviceID device = 0;
+  int audio_queue_threshould = 4096 * 4;
 
   struct oscpulse {
     double frequency = 0;

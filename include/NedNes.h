@@ -6,6 +6,7 @@
 #include "Ned6502.h"
 #include "NedBus.h"
 #include "NedCartridge.h"
+#include <SDL2/SDL_audio.h>
 #include <cstdint>
 #include <fstream>
 #include <memory>
@@ -26,8 +27,8 @@ private:
 public:
   NedNesEmulator() = default;
 
-  NedNesEmulator(SDL_Renderer *gRenderer);
-  NedNesEmulator(SDL_Renderer *gRenderer, std::string);
+  NedNesEmulator(SDL_Renderer *gRenderer, SDL_AudioDeviceID id);
+  NedNesEmulator(SDL_Renderer *gRenderer, std::string, SDL_AudioDeviceID id);
   bool loadRom(std::string);
   void unload();
   void reset();
@@ -39,6 +40,11 @@ public:
   std::shared_ptr<NedBus> getBus() const { return EmuBus; };
   std::shared_ptr<Ned6502> getCPU() const { return CPU; }
   std::shared_ptr<Ned2C02> getPPU() const { return PPU; }
+  std::shared_ptr<Ned2A03> getAPU() const { return APU; }
+
+  void fillAudioBuffer(int16_t *audio_buffer, unsigned int size) {
+    APU->fillAudioBuffer(audio_buffer, size);
+  }
 };
 } // namespace NedNes
 #endif

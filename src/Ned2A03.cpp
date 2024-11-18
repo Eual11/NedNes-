@@ -1,36 +1,26 @@
 #include "../include/Ned2A03.h"
+#include <SDL2/SDL_stdinc.h>
 #include <cstdint>
 
 // TODO: Fully implement sound
 using namespace NedNes;
 
-Ned2A03::Ned2A03() {
+Ned2A03::Ned2A03(SDL_AudioDeviceID id) {
   // resetting stuff
 
+  device = id;
   reset();
 }
 
 void Ned2A03::fillAudioBuffer(int16_t *audio_buffer, unsigned int size) {
-  unsigned int read_count = 0x00;
-  pulse1_osc.frequency = 440;
-  pulse1_osc.dutycycle = 0.5;
-  int H = 20;
 
-  while (read_count < size) {
-    double wave_a = 0;
-    double wave_b = 0;
-    for (int n = 1; n <= H; n++) {
-      wave_a +=
-          (sin(2.0 * pulse1_osc.pi * pulse1_osc.frequency * gTime * n)) / n;
-      wave_b +=
-          (sin(2.0 * pulse1_osc.pi *
-               (pulse1_osc.frequency * gTime - pulse1_osc.dutycycle) * n)) /
-          n;
-    }
-    int16_t wave = (wave_a - wave_b) * UINT16_MAX;
+  int read_count = 0;
 
-    audio_buffer[read_count] = UINT16_MAX * sin(gTime * 2 * 3.14 * 440);
-    read_count += 1;
+  while (audio_queue.size() != 0 && read_count < size) {
+
+    audio_buffer[read_count] = audio_queue.front();
+    read_count++;
+    audio_queue.pop_front();
   }
 }
 
@@ -96,26 +86,55 @@ uint8_t Ned2A03::cpuRead(uint16_t addr) {
 
 void Ned2A03::clock() {
 
+  static double accumulator = 0.0f;
+  static double prev_sample = 0.0f;
+  static double phase_accumulator = 0.0f;
+
+  double sample_per_apu_cycle = 44100.0 / 1789773.0;
+
   gTime += (0.3333333333 / 1789773);
   // the apu cycle clocks once per other cpu clock which is 2x slower than the
   // cpu, which in turn is 3x slower than the ppu we clock the ppu and apu at
   // the same rate so we have to wait 6 cycles
+
   if (cycles % 6 == 0) {
+    int samples_in_queue = SDL_GetQueuedAudioSize(device);
 
-    frame_counter++;
-    pulse1_sequencer.clock(pulse1_enable, [](uint32_t &s) {
-      s = ((s & 0x0001) << 7) | ((s & 0xFE) >> 1);
-    });
+    if (samples_in_queue < audio_queue_threshould) {
 
-    pulse1_osc.frequency =
-        1789773.0 / (16.0 * (double)(pulse1_sequencer.reload + 1));
-    pulse1_osc.amplitude = 1;
-    pulse1_sample = (int16_t)(UINT16_MAX * pulse1_osc.sample(gTime));
+      double amp = 0.5;
+      accumulator += sample_per_apu_cycle;
 
-    /* pulse1_sample = pulse1_sequencer.output; */
-    /* audio_queue.push_back(pulse1_sample); */
-    /* buffer.write(pulse1_sample); */
-    current_sample_count++;
+      std::vector<int16_t> new_samples;
+      while (accumulator >= 1.0f || new_samples.size() < 512) {
+        // we generated atleast once sample
+        accumulator -= 1.0f;
+        double frequency_step = 2 * M_PI * 440.0f / 44100.0;
+
+        phase_accumulator += frequency_step;
+
+        if (phase_accumulator >= 2 * M_PI)
+          phase_accumulator -= 2 * M_PI;
+
+        float sin_sample = amp * sin(phase_accumulator);
+        double filtred_sample = (prev_sample + sin_sample) / 2.0f;
+        prev_sample = sin_sample;
+        pulse1_sample = (int16_t)(INT16_MAX * filtred_sample);
+
+        new_samples.push_back(pulse1_sample);
+        audioData.push_back(pulse1_sample);
+      }
+
+      SDL_QueueAudio(device, new_samples.data(),
+                     new_samples.size() * sizeof(int16_t));
+
+      frame_counter++;
+
+      pulse1_osc.frequency =
+          1789773.0 / (16.0 * (double)(pulse1_sequencer.reload + 1));
+
+      current_sample_count++;
+    }
   }
 
   cycles++;
