@@ -67,7 +67,7 @@ public:
   float gTime = 0.0f;
   int16_t pulse1_sample;
   SDL_AudioDeviceID device = 0;
-  int audio_queue_threshould = 4096 * 4;
+  int audio_queue_threshould = 4096 * 2;
 
   struct PulseChannel {
     uint32_t timer = 0.0;
@@ -79,6 +79,7 @@ public:
     bool enabled = false;
     uint32_t length_counter = 0;
     bool lc_halt = false;
+    bool sweep_mute = false;
 
     // envelope parameters
 
@@ -111,13 +112,10 @@ public:
       if ((length_counter == 0 && (!lc_halt)) || !enabled) {
         return 0.0f;
       }
-
-      // sweep muting
-      if (timer < 0x7 || timer > 0x7FF)
+      if (sweep_mute)
         return 0x00;
-
-      double a = 0;
       double b = 0;
+      double a = 0;
       double p = dutycycle * 2.0 * M_PI;
 
       for (double n = 1; n < harmonics; n++) {
@@ -126,7 +124,7 @@ public:
         b += -sin(c - p * n) / n;
       }
 
-      return (getVolume() / 15.0f / (2.0 * M_PI)) * (a - b);
+      return ((getVolume() / 15.0f) / (2.0 * M_PI)) * (a - b);
     }
 
     void clock_lc() {
@@ -182,7 +180,7 @@ public:
 
         // Timer overflow check
         if (timer > 0x07FF || timer < 8) {
-          length_counter = 0; // Silence the channel
+          sweep_mute = true;
         }
 
         // Reset divider
@@ -238,12 +236,14 @@ private:
                                  96, 22,  192, 24, 72, 26, 16, 28, 32,  30};
 
   double accumulator = 0.0f;
-  double phase_accumulator = 0.0f;
+  double phase_accumulator1 = 0.0f;
+  double phase_accumulator2 = 0.0f;
   double prev_sample = 0.0f;
   float pulse1_dutycycle = 0.0f;
   bool pulse1_halt = false;
   bool pulse1_enable = false;
   PulseChannel pulse1;
+  PulseChannel pulse2;
 };
 } // namespace NedNes
 
