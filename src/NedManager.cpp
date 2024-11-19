@@ -861,7 +861,6 @@ void NedManager::ProcessSettings() {
 
       if (val == "true") {
         muted = true;
-        std::cout << "muted\n";
       } else if (val == "false")
         muted = false;
     }
