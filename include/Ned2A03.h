@@ -67,7 +67,7 @@ public:
   float gTime = 0.0f;
   int16_t pulse1_sample;
   SDL_AudioDeviceID device = 0;
-  int audio_queue_threshould = 4096 * 2;
+  int audio_queue_threshould = 4096 * 4;
 
   struct PulseChannel {
     uint32_t timer = 0.0;
@@ -92,14 +92,29 @@ public:
 
     bool start_envlope_flag = false;
 
+    // sweep parameters
+
+    bool sweep_enable = false;
+    bool sweep_negate = false;
+    bool sweep_reload = false;
+    uint8_t sweep_divider = 0x00;
+    uint8_t sweep_period = 0x00;
+    uint8_t sweep_shift = 0x00;
+
     double harmonics = 20;
     double volume = 1.0f;
 
+    double getVolume() const {
+      return ((constant_volume)) ? envlope_period : envlope_counter;
+    }
     double sample(double t) {
-
       if ((length_counter == 0 && (!lc_halt)) || !enabled) {
         return 0.0f;
       }
+
+      // sweep muting
+      if (timer < 0x7 || timer > 0x7FF)
+        return 0x00;
 
       double a = 0;
       double b = 0;
@@ -112,7 +127,7 @@ public:
       }
 
       return (getVolume() / 15.0f / (2.0 * M_PI)) * (a - b);
-    };
+    }
 
     void clock_lc() {
       if (!enabled)
@@ -121,6 +136,8 @@ public:
         --length_counter;
     }
     void clock_envlope() {
+      if (!enabled)
+        return;
 
       if (start_envlope_flag) {
         start_envlope_flag = false;
@@ -143,8 +160,42 @@ public:
         }
       }
     }
-    double getVolume() const {
-      return ((constant_volume)) ? envlope_period : envlope_counter;
+
+    void clock_sweep(uint8_t channel_id) {
+      if (!sweep_enable || !enabled || timer < 8 || timer > 0x07FF) {
+        return; // Sweep is inactive or out of range
+      }
+
+      // If divider reaches 0, perform sweep
+      if (sweep_divider == 0) {
+        // Calculate change
+        uint16_t change = timer >> sweep_shift;
+
+        if (sweep_negate) {
+          timer -= change;
+          if (channel_id == 1) {
+            timer--; // Extra subtract for Pulse 1
+          }
+        } else {
+          timer += change;
+        }
+
+        // Timer overflow check
+        if (timer > 0x07FF || timer < 8) {
+          length_counter = 0; // Silence the channel
+        }
+
+        // Reset divider
+        sweep_divider = sweep_period;
+      } else {
+        sweep_divider--;
+      }
+
+      // Reload divider if reload flag is set
+      if (sweep_reload) {
+        sweep_divider = sweep_period;
+        sweep_reload = false;
+      }
     }
   };
   struct oscpulse {
@@ -182,41 +233,9 @@ private:
   uint32_t frame_counter = 0;
   bool frame_counter_mode = 0; // 0 for 4 step mode, 1 for 5 step mode
   uint32_t cycles = 0;
-
-  const uint8_t lc_lookup[32] = {
-      10,  // Index 0x00
-      254, // Index 0x01
-      20,  // Index 0x02
-      2,   // Index 0x03
-      40,  // Index 0x04
-      4,   // Index 0x05
-      80,  // Index 0x06
-      6,   // Index 0x07
-      160, // Index 0x08
-      8,   // Index 0x09
-      60,  // Index 0x0A
-      10,  // Index 0x0B
-      14,  // Index 0x0C
-      12,  // Index 0x0D
-      26,  // Index 0x0E
-      14,  // Index 0x0F
-      12,  // Index 0x10
-      16,  // Index 0x11
-      24,  // Index 0x12
-      18,  // Index 0x13
-      48,  // Index 0x14
-      20,  // Index 0x15
-      96,  // Index 0x16
-      22,  // Index 0x17
-      192, // Index 0x18
-      24,  // Index 0x19
-      72,  // Index 0x1A
-      26,  // Index 0x1B
-      16,  // Index 0x1C
-      28,  // Index 0x1D
-      32,  // Index 0x1E
-      30   // Index 0x1F
-  };
+  const uint8_t lc_lookup[32] = {10, 254, 20,  2,  40, 4,  80, 6,  160, 8,  60,
+                                 10, 14,  12,  26, 14, 12, 16, 24, 18,  48, 20,
+                                 96, 22,  192, 24, 72, 26, 16, 28, 32,  30};
 
   double accumulator = 0.0f;
   double phase_accumulator = 0.0f;

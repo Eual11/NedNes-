@@ -52,31 +52,35 @@ void Ned2A03::cpuWrite(uint16_t addr, uint8_t data) {
     //
     pulse1.envlope_loop = data & 0x20;
     pulse1.envlope_period = data & 0xF;
-    pulse1.constant_volume = data & 0x10;
+    pulse1.constant_volume = (data & 0x10) != 0;
     pulse1.lc_halt = data & 0x20;
-    pulse1.start_envlope_flag = true;
   }
   if (addr == 0x4001) {
     // sweep
+    pulse1.sweep_enable = data & 0x80;
+    pulse1.sweep_period = (data & 0x70) >> 4;
+    pulse1.sweep_negate = (data & 0x8);
+    pulse1.sweep_shift = (data & 0x7);
+    pulse1.sweep_reload = true;
   }
   if (addr == 0x4002) {
 
     // timer low
-    pulse1.reload = (pulse1.reload & 0xFF) | (data);
+    pulse1.reload = (pulse1.reload & 0xFF00) | (data);
   }
   if (addr == 0x4003) {
 
     if (pulse1.enabled)
       pulse1.length_counter = lc_lookup[(data >> 3) & 0x1F];
     // timer high
-    pulse1.reload = ((uint16_t)(data & 0x7) << 8) | pulse1.reload & 0x00FF;
+    pulse1.reload = ((uint16_t)(data & 0x7) << 8) | (pulse1.reload & 0x00FF);
     pulse1.timer = pulse1.reload;
     pulse1.start_envlope_flag = true;
   }
 
   if (addr == 0x4015) {
     // status
-    bool new_enabled = data & 0x01;
+    bool new_enabled = (data & 0x01) != 0;
 
     if (pulse1.enabled && !new_enabled) {
       pulse1.length_counter = 0x00;
@@ -84,7 +88,7 @@ void Ned2A03::cpuWrite(uint16_t addr, uint8_t data) {
     pulse1.enabled = new_enabled;
   }
   if (addr == 0x4017) {
-    frame_counter_mode = (data & 0x40);
+    frame_counter_mode = (data & 0x40) != 0;
   }
 }
 uint8_t Ned2A03::cpuRead(uint16_t addr) {
@@ -116,22 +120,24 @@ void Ned2A03::clock() {
 
         pulse1.clock_envlope();
       }
-      if (frame_counter == 7458) {
+      if (frame_counter == 7457) {
         // clock both env, tri and lenfth counters, sweep units
         pulse1.clock_envlope();
         pulse1.clock_lc();
+        pulse1.clock_sweep(1);
       }
-      if (frame_counter == 11187) {
+      if (frame_counter == 11186) {
 
-        pulse1.clock_envlope();
         // clock envlope and triangle linear counter
+        pulse1.clock_envlope();
       }
 
-      if (frame_counter >= 14915) {
+      if (frame_counter >= 14916) {
 
-        pulse1.clock_envlope();
         // clock both env, tri and lenfth counters, sweep units
+        pulse1.clock_envlope();
         pulse1.clock_lc();
+        pulse1.clock_sweep(1);
         // resetting frame counter
         frame_counter = 0;
       }
@@ -141,12 +147,13 @@ void Ned2A03::clock() {
         // clock envlope and triangle linear counter
         pulse1.clock_envlope();
       }
-      if (frame_counter == 7458) {
+      if (frame_counter == 7457) {
         // clock both env, tri and lenfth counters, sweep units
         pulse1.clock_lc();
         pulse1.clock_envlope();
+        pulse1.clock_sweep(1);
       }
-      if (frame_counter == 11187) {
+      if (frame_counter == 11186) {
 
         // clock envlope and triangle linear counter
         pulse1.clock_envlope();
@@ -157,6 +164,7 @@ void Ned2A03::clock() {
         // clock both env, tri and lenfth counters, sweep units
         pulse1.clock_envlope();
         pulse1.clock_lc();
+        pulse1.clock_sweep(1);
         // resetting frame counter
         frame_counter = 0;
       }
@@ -167,16 +175,16 @@ void Ned2A03::clock() {
 
     if (samples_in_queue < audio_queue_threshould) {
 
-      double pulse1_sample = 0.0f;
+      int16_t pulse1_sample = 0;
 
       accumulator += sample_per_apu_cycle;
 
       std::vector<int16_t> new_samples;
-      while (accumulator >= 1.0f || new_samples.size() < 128) {
+      while (accumulator >= 1.0f || new_samples.size() < 1024) {
         // we generated atleast once sample
 
         accumulator -= 1.0f;
-        pulse1.frequency = 1789773.0 / (16.0 * (double)(pulse1.timer + 1));
+        pulse1.frequency = 1789773.0 / (16.0 * (double)(pulse1.timer + 1.0));
 
         // NOTE: debug
 
