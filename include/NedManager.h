@@ -159,6 +159,7 @@ private:
 
   // audio device handle and settings
   SDL_AudioDeviceID device = 0;
+  bool muted = false;
 
 public:
   std::vector<int16_t> audioBuffer;
@@ -184,8 +185,13 @@ private:
   // window parameters
   int WINDOW_WIDTH = 800;
   int WINDOW_HEIGHT = 600;
-  // a global font and willa also act as a fallback font when we
-  // implement the pages
+
+  // framerate
+
+  const int TARGET_FPS = 60;
+  const int TARGET_FRAMETIME = 1000 / TARGET_FPS;
+  //  a global font and willa also act as a fallback font when we
+  //  implement the pages
   TTF_Font *global_font = nullptr;
 
   // current event pulled from SDL_Event queue

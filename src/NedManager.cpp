@@ -1,4 +1,5 @@
 #include "../include/NedManager.h"
+#include <SDL2/SDL_audio.h>
 #include <SDL2/SDL_error.h>
 #include <SDL2/SDL_events.h>
 #include <SDL2/SDL_image.h>
@@ -11,6 +12,7 @@
 #include <SDL2/SDL_ttf.h>
 #include <SDL2/SDL_video.h>
 #include <cassert>
+#include <cstdint>
 #include <memory>
 #include <string>
 using namespace NedNes;
@@ -60,8 +62,7 @@ bool NedManager::Init() {
     exit(1);
   }
 
-  gRenderer = SDL_CreateRenderer(
-      gWindow, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+  gRenderer = SDL_CreateRenderer(gWindow, -1, SDL_RENDERER_ACCELERATED);
   if (!gRenderer) {
     fprintf(stderr, "Couldn't Create Renderer: %s\n", SDL_GetError());
     exit(1);
@@ -71,6 +72,7 @@ bool NedManager::Init() {
     exit(1);
   }
 
+  LoadConfigFile();
   SetupAudio();
   global_font = TTF_OpenFont("../asset/font/Pixeboy.ttf", 39);
   if (!global_font) {
@@ -138,7 +140,6 @@ bool NedManager::Init() {
   SDL_QueryTexture(gameicon, nullptr, nullptr, &gameiconRect.w,
                    &gameiconRect.h);
 
-  LoadConfigFile();
   SDL_Color col;
   col.r = 0xFF;
   col.g = 0x00;
@@ -243,6 +244,8 @@ void NedManager::Run() {
     exit(1);
   }
   while (!Quit) {
+
+    uint32_t frame_start = SDL_GetTicks();
     while (SDL_PollEvent(&cur_event)) {
       HandleEvents(cur_event);
 
@@ -268,6 +271,12 @@ void NedManager::Run() {
       RenderUI();
     }
     SDL_RenderPresent(gRenderer);
+
+    Uint32 frame_time =
+        SDL_GetTicks() - frame_start; // Time taken to render the frame
+    if (frame_time < TARGET_FRAMETIME) {
+      SDL_Delay(TARGET_FRAMETIME - frame_time); // Wait for the remaining time
+    }
   }
   Close();
 }
@@ -300,6 +309,12 @@ void NedManager::HandleEvents(SDL_Event &event) {
     }
     case SDLK_n: {
       UpdateGameMenu(current_page + 1);
+      break;
+    }
+    case SDLK_m: {
+
+      SDL_PauseAudioDevice(device, muted ? 1 : 0);
+      muted = !muted;
       break;
     }
     case SDLK_RETURN: {
@@ -417,7 +432,7 @@ void NedManager::RenderUI() {
   if (images["background"]) {
     images["background"]->Render(gRenderer);
   }
-  if (images["music_icon"]) {
+  if (images["music_icon"] && !muted) {
     (images["music_icon"]->Render(gRenderer));
   }
   SDL_RenderCopy(gRenderer, header, nullptr, &headerRect);
@@ -731,7 +746,7 @@ void NedManager::SetupAudio() {
   // unpausing Audio device
   // NOTE: this will be changed after testing
 
-  SDL_PauseAudioDevice(device, 0);
+  SDL_PauseAudioDevice(device, muted);
 }
 
 void NedManager::Callback(void *userdata, Uint8 *stream, int len) {
@@ -804,8 +819,10 @@ void NedManager::LoadConfigFile() {
   // Process games and store our lovely games
 
   ProcessGamesSection();
+
   // process emulator settings
-  //
+
+  ProcessSettings();
 }
 
 void NedManager::ProcessGamesSection() {
@@ -823,5 +840,29 @@ void NedManager::ProcessGamesSection() {
     std::string title = line.substr(0, eq);
     std::string path = line.substr(eq + 1);
     programs_list.push_back({title, path});
+  }
+}
+void NedManager::ProcessSettings() {
+  std::istringstream prg_list(parsed_config["[settings]"]);
+
+  std::string line;
+
+  while (std::getline(prg_list, line)) {
+
+    // removing any Quotations
+
+    size_t eq = line.find_first_of("=");
+
+    std::string key = line.substr(0, eq);
+    std::string val = line.substr(eq + 1);
+
+    if (key == "mute") {
+
+      if (val == "true") {
+        muted = true;
+        std::cout << "muted\n";
+      } else if (val == "false")
+        muted = false;
+    }
   }
 }
