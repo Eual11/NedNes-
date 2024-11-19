@@ -75,10 +75,22 @@ public:
     double frequency = 0.0f;
     double dutycycle = 0.0;
 
+    // enable and length counter
     bool enabled = false;
-
     uint32_t length_counter = 0;
     bool lc_halt = false;
+
+    // envelope parameters
+
+    bool constant_volume = false;
+    bool envlope_loop = false;
+
+    uint8_t envlope_period = 0x00;
+
+    uint8_t envlope_divider = 0x00;
+    uint8_t envlope_counter = 0x00;
+
+    bool start_envlope_flag = false;
 
     double harmonics = 20;
     double volume = 1.0f;
@@ -86,7 +98,7 @@ public:
     double sample(double t) {
 
       if ((length_counter == 0 && (!lc_halt)) || !enabled) {
-        /* return 0.0f; */
+        return 0.0f;
       }
 
       double a = 0;
@@ -99,12 +111,40 @@ public:
         b += -sin(c - p * n) / n;
       }
 
-      return (volume / (2.0 * M_PI)) * (a - b);
+      return (getVolume() / 15.0f / (2.0 * M_PI)) * (a - b);
     };
 
     void clock_lc() {
+      if (!enabled)
+        return;
       if (length_counter > 0 && !lc_halt)
         --length_counter;
+    }
+    void clock_envlope() {
+
+      if (start_envlope_flag) {
+        start_envlope_flag = false;
+        envlope_counter = 15;
+        envlope_divider = envlope_period;
+      } else {
+        if (envlope_divider > 0) {
+          envlope_divider--;
+        } else {
+          envlope_divider = envlope_period;
+
+          if (envlope_counter > 0) {
+            // reloading divider
+            envlope_counter--;
+          } else {
+            if (envlope_loop) {
+              envlope_counter = 15;
+            }
+          }
+        }
+      }
+    }
+    double getVolume() const {
+      return ((constant_volume)) ? envlope_period : envlope_counter;
     }
   };
   struct oscpulse {
@@ -178,7 +218,9 @@ private:
       30   // Index 0x1F
   };
 
-  ;
+  double accumulator = 0.0f;
+  double phase_accumulator = 0.0f;
+  double prev_sample = 0.0f;
   float pulse1_dutycycle = 0.0f;
   bool pulse1_halt = false;
   bool pulse1_enable = false;
