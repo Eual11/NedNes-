@@ -28,42 +28,6 @@ struct WAVHeader {
 
 namespace NedNes {
 
-struct RingBuffer {
-public:
-  RingBuffer(unsigned int size = 2 << 16) {
-    buffer.resize(size);
-    N = size;
-  }
-  uint32_t read(unsigned int idx) {
-    // if rempty read null, in case of our APU
-    // pure silence
-    if (read_index == write_index)
-      return 0x00;
-    unsigned int data = buffer[read_index];
-    // once samples has been read, we no longer need it
-    buffer[read_index] = 0x00;
-    read_index = (read_index + 1) % N;
-
-    return data;
-  }
-  void write(uint16_t val) {
-    if ((write_index + 1) % N == read_index)
-      return;
-
-    buffer[(write_index) % N] = val;
-    write_index = (write_index + 1) % N;
-  }
-
-  // this function should be called before any read and write operation if it's
-  // needed
-  void resize(unsigned int new_size) { buffer.resize(new_size); }
-
-private:
-  std::vector<int16_t> buffer;
-  unsigned int read_index = 0;
-  unsigned int write_index = 0;
-  unsigned int N = 0x00;
-};
 class Ned2A03 {
 
 public:
@@ -105,6 +69,44 @@ public:
   SDL_AudioDeviceID device = 0;
   int audio_queue_threshould = 4096 * 2;
 
+  struct PulseChannel {
+    uint32_t timer = 0.0;
+    uint32_t reload = 0;
+    double frequency = 0.0f;
+    double dutycycle = 0.0;
+
+    bool enabled = false;
+
+    uint32_t length_counter = 0;
+    bool lc_halt = false;
+
+    double harmonics = 20;
+    double volume = 1.0f;
+
+    double sample(double t) {
+
+      if ((length_counter == 0 && (!lc_halt)) || !enabled) {
+        /* return 0.0f; */
+      }
+
+      double a = 0;
+      double b = 0;
+      double p = dutycycle * 2.0 * M_PI;
+
+      for (double n = 1; n < harmonics; n++) {
+        double c = frequency * n * 2.0 * M_PI * t;
+        a += -sin(c) / n;
+        b += -sin(c - p * n) / n;
+      }
+
+      return (volume / (2.0 * M_PI)) * (a - b);
+    };
+
+    void clock_lc() {
+      if (length_counter > 0 && !lc_halt)
+        --length_counter;
+    }
+  };
   struct oscpulse {
     double frequency = 0;
     double dutycycle = 0;
@@ -132,39 +134,55 @@ public:
       return (amplitude / (2.0 * pi)) * (a - b);
     }
   };
-  struct sequencer {
 
-    uint32_t sequence = 0x00000000;
-    uint16_t timer = 0x00000000;
-    uint16_t reload = 0x00000000;
-    uint32_t new_sequence = 0x00000000;
-    uint16_t output = 0x00;
-
-    uint16_t clock(bool enable, std::function<void(uint32_t &)> func) {
-
-      if (enable) {
-        timer--;
-        if (timer == 0xFFFF) {
-          timer = reload;
-          func(sequence);
-          output = sequence & 0x01;
-        }
-      }
-      return output;
-    }
-  };
   void fillAudioBuffer(int16_t *buffer, unsigned int size);
 
 private:
   std::deque<int16_t> audio_queue;
   uint32_t frame_counter = 0;
+  bool frame_counter_mode = 0; // 0 for 4 step mode, 1 for 5 step mode
   uint32_t cycles = 0;
+
+  const uint8_t lc_lookup[32] = {
+      10,  // Index 0x00
+      254, // Index 0x01
+      20,  // Index 0x02
+      2,   // Index 0x03
+      40,  // Index 0x04
+      4,   // Index 0x05
+      80,  // Index 0x06
+      6,   // Index 0x07
+      160, // Index 0x08
+      8,   // Index 0x09
+      60,  // Index 0x0A
+      10,  // Index 0x0B
+      14,  // Index 0x0C
+      12,  // Index 0x0D
+      26,  // Index 0x0E
+      14,  // Index 0x0F
+      12,  // Index 0x10
+      16,  // Index 0x11
+      24,  // Index 0x12
+      18,  // Index 0x13
+      48,  // Index 0x14
+      20,  // Index 0x15
+      96,  // Index 0x16
+      22,  // Index 0x17
+      192, // Index 0x18
+      24,  // Index 0x19
+      72,  // Index 0x1A
+      26,  // Index 0x1B
+      16,  // Index 0x1C
+      28,  // Index 0x1D
+      32,  // Index 0x1E
+      30   // Index 0x1F
+  };
+
+  ;
   float pulse1_dutycycle = 0.0f;
   bool pulse1_halt = false;
   bool pulse1_enable = false;
-  sequencer pulse1_sequencer;
-  oscpulse pulse1_osc;
-  RingBuffer buffer;
+  PulseChannel pulse1;
 };
 } // namespace NedNes
 

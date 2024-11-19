@@ -817,9 +817,6 @@ void NedManager::ProcessGamesSection() {
   while (std::getline(prg_list, line)) {
 
     // removing any Quotations
-    line.erase(std::remove_if(line.begin(), line.end(),
-                              [](char c) { return c == '"' || c == '\''; }),
-               line.end());
 
     size_t eq = line.find_first_of("=");
 
