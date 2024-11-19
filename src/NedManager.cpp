@@ -14,6 +14,7 @@
 #include <cassert>
 #include <cstdint>
 #include <memory>
+#include <stdexcept>
 #include <string>
 using namespace NedNes;
 
@@ -863,6 +864,14 @@ void NedManager::ProcessSettings() {
         std::cout << "muted\n";
       } else if (val == "false")
         muted = false;
+    }
+    if (key == "fps") {
+      try {
+        int fps = std::stoi(val);
+        TARGET_FRAMETIME = 1000 / fps;
+      } catch (const std::invalid_argument &) {
+      } catch (const std::out_of_range &) {
+      }
     }
   }
 }

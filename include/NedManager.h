@@ -188,8 +188,8 @@ private:
 
   // framerate
 
-  const int TARGET_FPS = 60;
-  const int TARGET_FRAMETIME = 1000 / TARGET_FPS;
+  const int DEFAULT_FPS = 60;
+  int TARGET_FRAMETIME = 1000 / DEFAULT_FPS;
   //  a global font and willa also act as a fallback font when we
   //  implement the pages
   TTF_Font *global_font = nullptr;
