@@ -158,7 +158,6 @@ bool NedManager::Init() {
 }
 void NedManager::Close() {
 
-  NED.getAPU()->writeWAV("../test.wav");
   SDL_DestroyRenderer(gRenderer);
   SDL_CloseAudioDevice(device);
   SDL_CloseAudio();
@@ -322,8 +321,8 @@ void NedManager::HandleEvents(SDL_Event &event) {
       }
       break;
     }
-    case SDLK_c: {
-      GameMenu->Clear();
+    case SDLK_m: {
+        muted =!muted;
       break;
     }
     }
@@ -799,8 +798,13 @@ void NedManager::LoadConfigFile() {
   std::vector<std::string> sections = {"[games]", "[settings]"};
 
   std::string line;
+  std::string comment_token ="#";
 
   while (std::getline(config, line)) {
+    if (line.at(0) == '#')
+    {
+      continue;
+    }
 
     if (std::find(sections.begin(), sections.end(), line) != sections.end()) {
 
