@@ -1,4 +1,5 @@
 rom
+!rom/tests/nestest.nes
 build
 todo.md
 tools
