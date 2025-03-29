@@ -13,6 +13,17 @@ if(WIN32)
 else()
   add_executable(${EXECUTABLE_NAME} ./Manager.cpp)
 endif()
+
+
+if(WIN32)
+    add_definitions(-DSDL_STATIC)  # This tells SDL2 to link statically
+
+    
+        
+    # Optionally, disable the dynamic CRT
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /MT")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /MT")
+endif()
 add_library(Ned6502 STATIC ./Ned6502.cpp)
 add_library(Ned2C02 STATIC ./Ned2CO2.cpp)
 add_library(NedBus STATIC ./NedBus.cpp)

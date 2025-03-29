@@ -159,7 +159,7 @@ private:
 
   // audio device handle and settings
   SDL_AudioDeviceID device = 0;
-  bool muted = false;
+  bool muted = true;
 
 public:
   std::vector<int16_t> audioBuffer;

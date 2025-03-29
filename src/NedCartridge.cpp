@@ -4,12 +4,15 @@
 #include "../include/Mapper002.h"
 #include "../include/Mapper003.h"
 #include "../include/Mapper004.h"
+#include <cstdio>
 #include <fstream>
 #include <iostream>
+#include <cerrno>
 #include <memory>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 namespace NedNes {
 
@@ -173,6 +176,8 @@ bool NedNes::NedCartrdige::loadRom(std::string filename) {
   std::ifstream rom(filename, std::ios::binary);
   if (rom.is_open()) {
 
+    
+  fprintf(stdout, "opened rom : %s\n",filename.c_str());
     struct header {
       char head[3];
       uint8_t format;
@@ -250,6 +255,7 @@ bool NedNes::NedCartrdige::loadRom(std::string filename) {
   }
   if (!valid) {
     fprintf(stderr, "Failed to Load Rom, Invalid ROM or Unsupported Format\n");
+    fprintf(stderr, "%s", strerror(errno));
     return false;
   }
   return true;

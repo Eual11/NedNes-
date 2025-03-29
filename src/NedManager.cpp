@@ -312,14 +312,9 @@ void NedManager::HandleEvents(SDL_Event &event) {
       UpdateGameMenu(current_page + 1);
       break;
     }
-    case SDLK_m: {
 
-      SDL_PauseAudioDevice(device, muted ? 1 : 0);
-      muted = !muted;
-      break;
-    }
     case SDLK_RETURN: {
-      //  SDL_Log();
+
       int idx =
           GameMenu->getSelectedIDX() + current_page * program_count_per_page;
       if (idx >= 0 && idx < programs_list.size()) {
@@ -832,14 +827,28 @@ void NedManager::ProcessGamesSection() {
 
   std::string line;
 
+  auto trim =[](std::string s)->std::string
+    {
+      auto first = s.find_first_not_of(" \t");
+
+      if(first == std::string::npos)
+      {
+        return "";
+      }
+
+      auto last = s.find_last_not_of(" \t");
+
+      return s.substr(first, (last-first+1));
+    };
+
   while (std::getline(prg_list, line)) {
 
-    // removing any Quotations
+    // removing any trailing space
 
     size_t eq = line.find_first_of("=");
 
     std::string title = line.substr(0, eq);
-    std::string path = line.substr(eq + 1);
+    std::string path = trim(line.substr(eq + 1));
     programs_list.push_back({title, path});
   }
 }
