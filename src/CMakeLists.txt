@@ -10,6 +10,7 @@ set(SDL2_image ${NED_LIB_DIR}/SDL2_image.lib)
 
 if(WIN32)
   add_executable(${EXECUTABLE_NAME} ./Manager.cpp icon.rc)
+  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /SUBSYSTEM:WINDOWS")
 else()
   add_executable(${EXECUTABLE_NAME} ./Manager.cpp)
 endif()
