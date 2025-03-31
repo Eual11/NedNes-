@@ -98,7 +98,7 @@ Compiling **NedNes** is straightforward with CMake. Run CMake on the project dir
 
 #### **Example Compilation (Linux/macOS/FreeBSD)**  
 ```sh
-git clone https://github.com/YourUsername/NedNes.git
+git clone https://github.com/Eual11/NedNes.git
 cd NedNes
 mkdir build && cd build
 cmake -DCMAKE_BUILD_TYPE=Release ..
@@ -107,7 +107,7 @@ make -j$(nproc)    # Replace $(nproc) with the number of CPU cores you want to u
 
 #### **Example Compilation (Windows with MinGW)**
 ```sh
-git clone https://github.com/YourUsername/NedNes.git
+git clone https://github.com/Eual11/NedNes.git
 cd NedNes
 mkdir build && cd build
 cmake -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=Release ..
